@@ -47,12 +47,17 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   total_amount: string;
   discount_amount: string;
+  delivery_fee: string;
   promo_code_used: string | null;
   shipping_address: string | null;
   notes: string | null;
   items: OrderItem[];
   created_at: string;
   updated_at: string | null;
+}
+
+export interface StoreSettings {
+  delivery_fee: string;
 }
 
 export interface PromoCode {

@@ -1,19 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart';
-import { createOrder, getCustomerSession, getCustomerId, validatePromoCode } from '@/lib/api';
+import { createOrder, getCustomerSession, getCustomerId, getPublicStoreSettings, validatePromoCode } from '@/lib/api';
+import LebanonAddressForm from '@/components/LebanonAddressForm';
+import { EMPTY_LEBANON_ADDRESS, formatLebanonAddress, LebanonAddress } from '@/lib/lebanon';
 
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
-  const [shippingAddress, setShippingAddress] = useState('');
+  const [address, setAddress] = useState<LebanonAddress>(EMPTY_LEBANON_ADDRESS);
   const [notes, setNotes] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [promoMsg, setPromoMsg] = useState('');
   const [promoValid, setPromoValid] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [finalTotal, setFinalTotal] = useState(total);
+  const [deliveryFee, setDeliveryFee] = useState(0);
   const [loading, setLoading] = useState(false);
   const [promoLoading, setPromoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,11 +24,16 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setHasSession(!!getCustomerSession());
+    getPublicStoreSettings()
+      .then(settings => setDeliveryFee(parseFloat(settings.delivery_fee) || 0))
+      .catch(() => setDeliveryFee(0));
   }, []);
 
-  useEffect(() => {
-    setFinalTotal(promoValid ? total - discountAmount : total);
-  }, [total, promoValid, discountAmount]);
+  const discountedSubtotal = useMemo(
+    () => Math.max(0, total - (promoValid ? discountAmount : 0)),
+    [discountAmount, promoValid, total],
+  );
+  const finalTotal = discountedSubtotal + deliveryFee;
 
   if (!hasSession) {
     return (
@@ -57,15 +64,11 @@ export default function CheckoutPage() {
       const res = await validatePromoCode(promoCode.trim(), total);
       setPromoValid(res.valid);
       setPromoMsg(res.message);
-      if (res.valid) {
-        setDiscountAmount(parseFloat(res.discount_amount));
-        setFinalTotal(parseFloat(res.final_total));
-      } else {
-        setDiscountAmount(0);
-      }
+      setDiscountAmount(res.valid ? parseFloat(res.discount_amount) : 0);
     } catch {
       setPromoMsg('Failed to validate code');
       setPromoValid(false);
+      setDiscountAmount(0);
     } finally {
       setPromoLoading(false);
     }
@@ -76,20 +79,35 @@ export default function CheckoutPage() {
     setPromoMsg('');
     setPromoValid(false);
     setDiscountAmount(0);
-    setFinalTotal(total);
+  }
+
+  function hasRequiredAddressFields() {
+    return !!(
+      address.governorate.trim() &&
+      address.district.trim() &&
+      address.city.trim() &&
+      address.street.trim()
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     const customerId = getCustomerId();
-    if (!customerId) { setError('Invalid session. Please log in again.'); return; }
+    if (!customerId) {
+      setError('Invalid session. Please log in again.');
+      return;
+    }
+    if (!hasRequiredAddressFields()) {
+      setError('Governorate, district, city, and street are required.');
+      return;
+    }
     setLoading(true);
     try {
       const order = await createOrder({
         customer_id: customerId,
         items: items.map(i => ({ product_id: i.product.id, quantity: i.quantity })),
-        shipping_address: shippingAddress || undefined,
+        shipping_address: formatLebanonAddress(address),
         notes: notes || undefined,
         promo_code: promoValid ? promoCode.trim() : undefined,
       });
@@ -106,7 +124,6 @@ export default function CheckoutPage() {
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Checkout</h1>
 
-      {/* Order Summary */}
       <div className="bg-white rounded-xl shadow p-6 mb-6">
         <h2 className="font-semibold text-gray-700 mb-4">Order Summary</h2>
         {items.length === 0 ? (
@@ -129,9 +146,13 @@ export default function CheckoutPage() {
                 <span>−${discountAmount.toFixed(2)}</span>
               </div>
             )}
+            <div className="flex justify-between text-gray-600">
+              <span>Delivery</span>
+              <span>${deliveryFee.toFixed(2)}</span>
+            </div>
             <div className="flex justify-between pt-3 font-bold text-lg border-t mt-2">
               <span>Total</span>
-              <span>${(promoValid ? finalTotal : total).toFixed(2)}</span>
+              <span>${finalTotal.toFixed(2)}</span>
             </div>
           </>
         )}
@@ -141,7 +162,6 @@ export default function CheckoutPage() {
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 flex flex-col gap-4">
           {error && <p className="text-red-600 text-sm p-3 bg-red-50 rounded-lg">{error}</p>}
 
-          {/* Promo code */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Promo Code</label>
             {promoValid ? (
@@ -174,15 +194,10 @@ export default function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Shipping Address</label>
-            <textarea
-              value={shippingAddress}
-              onChange={e => setShippingAddress(e.target.value)}
-              rows={3}
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter your shipping address"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-3">Shipping Address</label>
+            <LebanonAddressForm value={address} onChange={setAddress} />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
             <textarea
@@ -198,7 +213,7 @@ export default function CheckoutPage() {
             disabled={loading}
             className="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors"
           >
-            {loading ? 'Placing Order...' : `Place Order · $${(promoValid ? finalTotal : total).toFixed(2)}`}
+            {loading ? 'Placing Order...' : `Place Order · $${finalTotal.toFixed(2)}`}
           </button>
         </form>
       )}

@@ -10,6 +10,7 @@ const links = [
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/customers', label: 'Customers' },
   { href: '/admin/promo-codes', label: 'Promo Codes' },
+  { href: '/admin/settings', label: 'Settings' },
 ];
 
 export default function Sidebar() {

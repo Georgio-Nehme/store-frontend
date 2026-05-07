@@ -1,4 +1,4 @@
-import { Product, Customer, CustomerWithStats, Order, StoreLoginResponse, CustomerSession, PromoCode, PromoCodeValidateResponse, ProductImage } from './types';
+import { Product, Customer, CustomerWithStats, Order, StoreLoginResponse, CustomerSession, PromoCode, PromoCodeValidateResponse, ProductImage, StoreSettings } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID || '';
@@ -93,6 +93,14 @@ export function getProduct(id: string): Promise<Product> {
   return apiFetch<Product>(`/products/${id}`);
 }
 
+export async function getPublicStoreSettings(): Promise<StoreSettings> {
+  const res = await fetch(`${API_URL}/settings`, {
+    headers: { 'X-Store-ID': STORE_ID },
+  });
+  if (!res.ok) return { delivery_fee: '0' };
+  return res.json();
+}
+
 // Customer auth — returns a session object (no JWT)
 export function loginCustomer(email: string, password: string): Promise<CustomerSession> {
   return apiFetch<CustomerSession>('/auth/customer-login', {
@@ -136,6 +144,17 @@ export function adminLogin(email: string, password: string): Promise<StoreLoginR
 
 export function adminGetProducts(): Promise<Product[]> {
   return apiFetch<Product[]>('/admin/products');
+}
+
+export async function getStoreSettings(): Promise<StoreSettings> {
+  return apiFetch<StoreSettings>('/admin/settings');
+}
+
+export async function updateStoreSettings(data: { delivery_fee: number }): Promise<StoreSettings> {
+  return apiFetch<StoreSettings>('/admin/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
 export function adminCreateProduct(data: {
