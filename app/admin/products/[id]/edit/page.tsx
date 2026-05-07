@@ -8,8 +8,7 @@ import {
   adminUpdateProduct,
   adminUpdateStock,
   adminGetProductImages,
-  adminPresignImage,
-  uploadImageToS3,
+  adminUploadImage,
   adminUpdateProductImage,
   adminDeleteProductImage,
 } from '@/lib/api';
@@ -39,7 +38,6 @@ function ImageManager({ productId }: { productId: string }) {
   const [images, setImages] = useState<ProductImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function sortImages(imgs: ProductImage[]) {
     return [...imgs].sort((a, b) => {
@@ -54,21 +52,12 @@ function ImageManager({ productId }: { productId: string }) {
       const imgs = await adminGetProductImages(productId);
       setImages(sortImages(imgs));
     } catch {
-      // silently ignore on background polls
+      // silently ignore
     }
   }
 
   useEffect(() => {
     loadImages();
-    // Auto-refresh every 15 s while any image is still processing
-    pollRef.current = setInterval(() => {
-      setImages(prev => {
-        const hasPending = prev.some(i => i.status === 'pending' || i.status === 'processing');
-        if (hasPending) loadImages();
-        return prev;
-      });
-    }, 15_000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
@@ -82,9 +71,8 @@ function ImageManager({ productId }: { productId: string }) {
     setUploadError(null);
     setUploading(true);
     try {
-      const presign = await adminPresignImage(productId, file.name, file.type);
-      await uploadImageToS3(presign.upload_url, file);
-      await loadImages();
+      const newImage = await adminUploadImage(productId, file);
+      setImages(prev => sortImages([...prev, newImage]));
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -154,9 +142,6 @@ function ImageManager({ productId }: { productId: string }) {
                     <StatusBadge status={img.status} />
                     {img.status === 'failed' && img.error_message && (
                       <p className="text-xs text-red-500 mt-1 leading-tight line-clamp-2">{img.error_message}</p>
-                    )}
-                    {(img.status === 'pending' || img.status === 'processing') && (
-                      <p className="text-xs text-gray-400 mt-1">Processing… refreshing every 15s</p>
                     )}
                   </div>
                 )}

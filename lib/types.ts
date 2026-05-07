@@ -103,10 +103,3 @@ export interface ProductImage {
   created_at: string;
   updated_at: string | null;
 }
-
-export interface PresignResponse {
-  image_id: string;
-  upload_url: string;
-  s3_key: string;
-  expires_in: number;
-}

@@ -1,4 +1,4 @@
-import { Product, Customer, CustomerWithStats, Order, StoreLoginResponse, CustomerSession, PromoCode, PromoCodeValidateResponse, ProductImage, PresignResponse } from './types';
+import { Product, Customer, CustomerWithStats, Order, StoreLoginResponse, CustomerSession, PromoCode, PromoCodeValidateResponse, ProductImage } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID || '';
@@ -264,25 +264,32 @@ export function adminGetProductImages(productId: string): Promise<ProductImage[]
   return apiFetch<ProductImage[]>(`/admin/products/${productId}/images`);
 }
 
-export function adminPresignImage(
-  productId: string,
-  filename: string,
-  contentType: string,
-): Promise<PresignResponse> {
-  return apiFetch<PresignResponse>(`/admin/products/${productId}/images/presign`, {
-    method: 'POST',
-    body: JSON.stringify({ filename, content_type: contentType }),
-  });
-}
+/** Upload an image directly to the FastAPI server — returns the ready image record with CDN URLs. */
+export async function adminUploadImage(productId: string, file: File): Promise<ProductImage> {
+  const token = getToken();
+  const form = new FormData();
+  form.append('file', file);
 
-/** Upload a file directly to S3 using the presigned PUT URL — no auth headers. */
-export async function uploadImageToS3(uploadUrl: string, file: File): Promise<void> {
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type },
+  const res = await fetch(`${API_URL}/admin/products/${productId}/images`, {
+    method: 'POST',
+    headers: {
+      'X-Store-ID': STORE_ID,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // No Content-Type — browser sets it with the correct multipart boundary
+    },
+    body: form,
   });
-  if (!res.ok) throw new Error(`S3 upload failed: ${res.status}`);
+
+  if (!res.ok) {
+    let message = `Upload failed: ${res.status}`;
+    try {
+      const err = await res.json();
+      message = err.detail || err.message || message;
+    } catch {}
+    throw new Error(message);
+  }
+
+  return res.json();
 }
 
 export function adminUpdateProductImage(
