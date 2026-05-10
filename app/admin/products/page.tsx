@@ -1,9 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { adminGetProducts, adminDeleteProduct, adminUpdateStock } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import { adminDeleteProduct, adminGetProducts, adminUpdateStock } from '@/lib/api';
 import { Product } from '@/lib/types';
+import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
+
+function getVal(p: Product, col: string): string | number {
+  if (col === 'price') return parseFloat(p.price);
+  if (col === 'stock') return p.stock;
+  if (col === 'status') return p.is_active ? 'active' : 'inactive';
+  if (col === 'type') return p.product_type;
+  return p.name.toLowerCase();
+}
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -13,8 +22,7 @@ export default function AdminProductsPage() {
   async function load() {
     setLoading(true);
     try {
-      const data = await adminGetProducts();
-      setProducts(data);
+      setProducts(await adminGetProducts());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -22,7 +30,17 @@ export default function AdminProductsPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
+
+  const { sorted, sortCol, sortDir, handleSort, query, setQuery } = useSortFilter(
+    products,
+    'name',
+    'asc',
+    getVal,
+    (p, q) => [p.name, p.sku || '', p.product_type, p.category?.name || '', p.is_active ? 'active' : 'inactive'].some(v => v.toLowerCase().includes(q)),
+  );
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"?`)) return;
@@ -43,6 +61,8 @@ export default function AdminProductsPage() {
     }
   }
 
+  const thCls = 'text-left text-gray-500 uppercase text-xs tracking-wide';
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -52,42 +72,56 @@ export default function AdminProductsPage() {
         </Link>
       </div>
 
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by name, SKU, type, category, or status…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          className="w-full sm:w-96 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
-      {loading ? (
-        <div className="animate-pulse bg-white rounded-xl h-64" />
-      ) : (
+      {loading ? <div className="animate-pulse bg-white rounded-xl h-64" /> : (
         <div className="bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
-              <tr className="text-left text-gray-500">
-                <th className="px-4 py-3">Name</th>
+              <tr className={thCls}>
+                <SortableHeader label="Name" column="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <th className="px-4 py-3">Category</th>
+                <SortableHeader label="Type" column="type" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">SKU</th>
-                <th className="px-4 py-3">Price</th>
-                <th className="px-4 py-3">Stock</th>
-                <th className="px-4 py-3">Status</th>
+                <SortableHeader label="Price" column="price" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="Stock" column="stock" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="Status" column="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.map(p => (
+              {sorted.map(p => (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium">{p.name}</td>
+                  <td className="px-4 py-3 text-gray-500">{p.category?.name || '—'}</td>
+                  <td className="px-4 py-3 capitalize">{p.product_type}</td>
                   <td className="px-4 py-3 text-gray-500 font-mono">{p.sku || '—'}</td>
                   <td className="px-4 py-3">
-                    <div>
-                      <span>${parseFloat(p.price).toFixed(2)}</span>
-                      {p.compare_price && parseFloat(p.compare_price) > parseFloat(p.price) && (
-                        <span className="ml-2 text-xs text-gray-400 line-through">${parseFloat(p.compare_price).toFixed(2)}</span>
-                      )}
-                    </div>
+                    <span>${parseFloat(p.price).toFixed(2)}</span>
+                    {p.compare_price && parseFloat(p.compare_price) > parseFloat(p.price) && (
+                      <span className="ml-2 text-xs text-gray-400 line-through">${parseFloat(p.compare_price).toFixed(2)}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => handleStock(p.id, -1)} className="w-6 h-6 border rounded hover:bg-gray-100">−</button>
-                      <span className="w-8 text-center">{p.stock}</span>
-                      <button onClick={() => handleStock(p.id, 1)} className="w-6 h-6 border rounded hover:bg-gray-100">+</button>
-                    </div>
+                    {p.product_type === 'variable' ? (
+                      <span className="text-xs text-gray-500">Managed by variants ({p.stock})</span>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleStock(p.id, -1)} className="w-6 h-6 border rounded hover:bg-gray-100">−</button>
+                        <span className="w-8 text-center">{p.stock}</span>
+                        <button onClick={() => handleStock(p.id, 1)} className="w-6 h-6 border rounded hover:bg-gray-100">+</button>
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
@@ -102,8 +136,8 @@ export default function AdminProductsPage() {
                   </td>
                 </tr>
               ))}
-              {products.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-gray-400 text-center">No products found</td></tr>
+              {sorted.length === 0 && (
+                <tr><td colSpan={8} className="px-4 py-8 text-gray-400 text-center">{query ? 'No products match your search' : 'No products found'}</td></tr>
               )}
             </tbody>
           </table>

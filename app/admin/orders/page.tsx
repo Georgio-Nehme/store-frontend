@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { adminGetOrders, adminGetCustomers, adminUpdateOrderStatus } from '@/lib/api';
 import { Order, Customer } from '@/lib/types';
+import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -22,35 +23,42 @@ export default function AdminOrdersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   async function load() {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      const [fetchedOrders, fetchedCustomers] = await Promise.all([
-        adminGetOrders(),
-        adminGetCustomers(),
-      ]);
+      const [fetchedOrders, fetchedCustomers] = await Promise.all([adminGetOrders(), adminGetCustomers()]);
       setOrders(fetchedOrders);
       setCustomers(new Map(fetchedCustomers.map(c => [c.id, c])));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to load'); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => { load(); }, []);
+
+  const { sorted, sortCol, sortDir, handleSort, query, setQuery } = useSortFilter(
+    orders, 'date', 'desc',
+    (o, col) => {
+      if (col === 'total') return parseFloat(o.total_amount);
+      if (col === 'status') return o.status;
+      if (col === 'date') return new Date(o.created_at).getTime();
+      const c = customers.get(o.customer_id);
+      return (c?.name || c?.email || '').toLowerCase();
+    },
+    (o, q) => {
+      const c = customers.get(o.customer_id);
+      return [o.id, o.status, o.shipping_address || '', c?.name || '', c?.email || ''].some(v => v.toLowerCase().includes(q));
+    },
+  );
 
   async function handleStatusChange(orderId: string, newStatus: Order['status']) {
     setUpdatingId(orderId);
     try {
       const updated = await adminUpdateOrderStatus(orderId, newStatus);
       setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to update status');
-    } finally {
-      setUpdatingId(null);
-    }
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to update status'); }
+    finally { setUpdatingId(null); }
   }
+
+  const thCls = 'text-left text-gray-500';
 
   return (
     <div>
@@ -58,25 +66,34 @@ export default function AdminOrdersPage() {
         <h1 className="text-2xl font-bold text-gray-800">Orders</h1>
         <button onClick={load} className="text-sm text-blue-600 hover:underline">Refresh</button>
       </div>
+
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by customer, status, address, or order ID…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          className="w-full sm:w-96 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       {error && <p className="text-red-600 mb-4 p-3 bg-red-50 rounded-lg text-sm">{error}</p>}
-      {loading ? (
-        <div className="animate-pulse bg-white rounded-xl h-64" />
-      ) : (
+      {loading ? <div className="animate-pulse bg-white rounded-xl h-64" /> : (
         <div className="bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
-              <tr className="text-left text-gray-500">
+              <tr className={thCls}>
                 <th className="px-4 py-3">Order ID</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Status</th>
+                <SortableHeader label="Customer" column="customer" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="Status" column="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">Items</th>
-                <th className="px-4 py-3">Total</th>
+                <SortableHeader label="Total" column="total" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">Shipping</th>
-                <th className="px-4 py-3">Date</th>
+                <SortableHeader label="Date" column="date" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
-              {orders.map(o => {
+              {sorted.map(o => {
                 const customer = customers.get(o.customer_id);
                 return (
                   <tr key={o.id} className="border-b last:border-0 hover:bg-gray-50">
@@ -87,9 +104,7 @@ export default function AdminOrdersPage() {
                           <p className="font-medium text-gray-800">{customer.name || customer.email}</p>
                           {customer.name && <p className="text-xs text-gray-400">{customer.email}</p>}
                         </div>
-                      ) : (
-                        <span className="text-gray-400 text-xs font-mono">{o.customer_id.slice(0, 8)}…</span>
-                      )}
+                      ) : <span className="text-gray-400 text-xs font-mono">{o.customer_id.slice(0, 8)}…</span>}
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -98,21 +113,19 @@ export default function AdminOrdersPage() {
                         onChange={e => handleStatusChange(o.id, e.target.value as Order['status'])}
                         className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none ${statusColors[o.status]}`}
                       >
-                        {ALL_STATUSES.map(s => (
-                          <option key={s} value={s} className="bg-white text-gray-800">{s}</option>
-                        ))}
+                        {ALL_STATUSES.map(s => <option key={s} value={s} className="bg-white text-gray-800">{s}</option>)}
                       </select>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{o.items.length}</td>
                     <td className="px-4 py-3 font-semibold">${parseFloat(o.total_amount).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs max-w-[160px] truncate">{o.shipping_address || '—'}</td>
+                    <td className="px-4 py-3">
+                      <p className="whitespace-pre-wrap text-xs text-gray-600 max-w-[200px]">{o.shipping_address || '—'}</p>
+                    </td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{new Date(o.created_at).toLocaleDateString()}</td>
                   </tr>
                 );
               })}
-              {orders.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-gray-400 text-center">No orders found</td></tr>
-              )}
+              {sorted.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-gray-400 text-center">{query ? 'No orders match your search' : 'No orders found'}</td></tr>}
             </tbody>
           </table>
         </div>

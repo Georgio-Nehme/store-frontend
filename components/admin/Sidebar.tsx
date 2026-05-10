@@ -7,6 +7,8 @@ import { clearToken } from '@/lib/api';
 const links = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/products', label: 'Products' },
+  { href: '/admin/categories', label: 'Categories' },
+  { href: '/admin/option-types', label: 'Option Types' },
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/customers', label: 'Customers' },
   { href: '/admin/promo-codes', label: 'Promo Codes' },
@@ -27,7 +29,7 @@ export default function Sidebar() {
       <h2 className="text-lg font-bold mb-8 text-white">Admin Panel</h2>
       <nav className="flex flex-col gap-2 flex-1">
         {links.map(link => {
-          const isActive = pathname === link.href;
+          const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
           return (
             <Link
               key={link.href}

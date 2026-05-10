@@ -8,6 +8,7 @@ import {
   adminDeletePromoCode,
 } from '@/lib/api';
 import { PromoCode } from '@/lib/types';
+import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
 
 const emptyForm = {
   code: '',
@@ -91,6 +92,18 @@ export default function AdminPromoCodesPage() {
     if (code.discount_type === 'percentage') return `${parseFloat(code.discount_value)}% off`;
     return `$${parseFloat(code.discount_value).toFixed(2)} off`;
   }
+
+  const { sorted, sortCol, sortDir, handleSort, query, setQuery } = useSortFilter(
+    codes, 'code', 'asc',
+    (c, col) => {
+      if (col === 'discount') return parseFloat(c.discount_value);
+      if (col === 'uses') return c.uses_count;
+      if (col === 'expires') return c.expires_at ? new Date(c.expires_at).getTime() : 0;
+      if (col === 'status') return c.is_active ? 'active' : 'inactive';
+      return c.code.toLowerCase();
+    },
+    (c, q) => [c.code, c.description || '', c.is_active ? 'active' : 'inactive'].some(v => v.toLowerCase().includes(q)),
+  );
 
   return (
     <div>
@@ -216,24 +229,34 @@ export default function AdminPromoCodesPage() {
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by code, description, or status…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          className="w-full sm:w-80 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       {loading ? (
         <div className="animate-pulse bg-white rounded-xl h-64" />
       ) : (
         <div className="bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
-              <tr className="text-left text-gray-500 uppercase text-xs tracking-wide">
-                <th className="px-4 py-3">Code</th>
-                <th className="px-4 py-3">Discount</th>
+              <tr className="text-left text-gray-500">
+                <SortableHeader label="Code" column="code" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="Discount" column="discount" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">Min Order</th>
-                <th className="px-4 py-3">Uses</th>
-                <th className="px-4 py-3">Expires</th>
-                <th className="px-4 py-3">Status</th>
+                <SortableHeader label="Uses" column="uses" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="Expires" column="expires" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortableHeader label="Status" column="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {codes.map(code => (
+              {sorted.map(code => (
                 <tr key={code.id} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
                     <span className="font-mono font-semibold text-gray-800 bg-gray-100 px-2 py-1 rounded">
@@ -276,10 +299,10 @@ export default function AdminPromoCodesPage() {
                   </td>
                 </tr>
               ))}
-              {codes.length === 0 && (
+              {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-gray-400 text-center">
-                    No promo codes yet. Create one above.
+                    {query ? 'No promo codes match your search' : 'No promo codes yet. Create one above.'}
                   </td>
                 </tr>
               )}

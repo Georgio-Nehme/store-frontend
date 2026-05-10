@@ -21,7 +21,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } else {
       setChecking(false);
     }
-  }, [pathname, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   if (pathname === '/admin/login') {
     return <>{children}</>;

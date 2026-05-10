@@ -1,25 +1,65 @@
-import { Product, Customer, CustomerWithStats, Order, StoreLoginResponse, CustomerSession, PromoCode, PromoCodeValidateResponse, ProductImage, StoreSettings } from './types';
+import {
+  AbandonedCart,
+  AnalyticsData,
+  Cart,
+  CartConfigurationInput,
+  CartItem,
+  Category,
+  Customer,
+  CustomerAddress,
+  CustomerDetail,
+  CustomerSession,
+  CustomerWithStats,
+  OptionChoice,
+  OptionGroup,
+  OptionType,
+  OptionValue,
+  Order,
+  Product,
+  ProductImage,
+  ProductType,
+  PromoCode,
+  PromoCodeValidateResponse,
+  StoreLoginResponse,
+  StoreSettings,
+  Variant,
+} from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID || '';
 
+function buildQuery(params: Record<string, string | number | boolean | null | undefined>): string {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    search.set(key, String(value));
+  });
+  const query = search.toString();
+  return query ? `?${query}` : '';
+}
+
 // ── Admin token (JWT for store admin/staff) ────────────────────────────────────
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('store_token');
+  return document.cookie
+    .split('; ')
+    .find(row => row.startsWith('store_token='))
+    ?.split('=')[1] || null;
 }
 
 export function setToken(token: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('store_token', token);
+  const days = 30;
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `store_token=${token}; expires=${expires}; path=/; SameSite=Lax`;
 }
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('store_token');
+  document.cookie = 'store_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 }
 
-// ── Customer session (no JWT — just id/email/name) ────────────────────────────
+// ── Customer session + token ───────────────────────────────────────────────────
 export function getCustomerSession(): CustomerSession | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -30,14 +70,26 @@ export function getCustomerSession(): CustomerSession | null {
   }
 }
 
+export function getCustomerToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('customer_token');
+}
+
 export function setCustomerSession(session: CustomerSession): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('customer_session', JSON.stringify(session));
+  const { access_token, token_type, ...sessionData } = session;
+  localStorage.setItem('customer_session', JSON.stringify(sessionData));
+  if (access_token) {
+    localStorage.setItem('customer_token', access_token);
+  } else {
+    localStorage.removeItem('customer_token');
+  }
 }
 
 export function clearCustomerSession(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('customer_session');
+  localStorage.removeItem('customer_token');
 }
 
 export function getCustomerId(): string | null {
@@ -55,21 +107,28 @@ export function isAdmin(): boolean {
   }
 }
 
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
+async function apiFetch<T>(path: string, options: RequestInit = {}, token: string | null = getToken()): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Store-ID': STORE_ID,
-    ...(options.headers as Record<string, string> || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
   });
+
+  if (res.status === 401) {
+    clearToken();
+    clearCustomerSession();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }
 
   if (!res.ok) {
     let message = `API error: ${res.status}`;
@@ -84,13 +143,34 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json();
 }
 
+function customerApiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return apiFetch<T>(path, options, getCustomerToken());
+}
+
 // Public endpoints
-export function getProducts(): Promise<Product[]> {
-  return apiFetch<Product[]>('/products');
+export function getProducts(params?: {
+  skip?: number;
+  limit?: number;
+  in_stock?: boolean;
+  category_id?: string;
+}): Promise<Product[]> {
+  return apiFetch<Product[]>(`/products${buildQuery(params ?? {})}`);
 }
 
 export function getProduct(id: string): Promise<Product> {
   return apiFetch<Product>(`/products/${id}`);
+}
+
+export function getCategories(): Promise<Category[]> {
+  return apiFetch<Category[]>('/categories');
+}
+
+export function getCategory(id: string): Promise<Category> {
+  return apiFetch<Category>(`/categories/${id}`);
+}
+
+export function getCategoryProducts(id: string, params?: { skip?: number; limit?: number; in_stock?: boolean }): Promise<Product[]> {
+  return apiFetch<Product[]>(`/categories/${id}/products${buildQuery(params ?? {})}`);
 }
 
 export async function getPublicStoreSettings(): Promise<StoreSettings> {
@@ -101,7 +181,7 @@ export async function getPublicStoreSettings(): Promise<StoreSettings> {
   return res.json();
 }
 
-// Customer auth — returns a session object (no JWT)
+// Customer auth
 export function loginCustomer(email: string, password: string): Promise<CustomerSession> {
   return apiFetch<CustomerSession>('/auth/customer-login', {
     method: 'POST',
@@ -116,25 +196,118 @@ export function registerCustomer(data: { email: string; name: string; phone: str
   });
 }
 
-// Customer endpoints (require auth)
 export function createOrder(data: {
-  customer_id: string;
-  items: { product_id: string; quantity: number }[];
+  items: {
+    product_id: string;
+    quantity: number;
+    variant_id?: string | null;
+    configuration?: CartConfigurationInput[] | null;
+  }[];
   shipping_address?: string;
   notes?: string;
   promo_code?: string;
 }): Promise<Order> {
-  return apiFetch<Order>('/orders', {
+  return customerApiFetch<Order>('/orders', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export function getOrder(id: string): Promise<Order> {
-  return apiFetch<Order>(`/orders/${id}`);
+export function syncCart(items: CartItem[]): Promise<Cart> {
+  return customerApiFetch<Cart>('/cart/sync', {
+    method: 'PUT',
+    body: JSON.stringify({
+      items: items.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        ...(item.variant_id ? { variant_id: item.variant_id } : {}),
+        ...(item.configuration
+          ? {
+              configuration: item.configuration.map(entry => ({
+                group_id: entry.group_id,
+                selected_choice_ids: entry.selected_choices.map(choice => choice.choice_id),
+                text_value: entry.text_value,
+              })),
+            }
+          : {}),
+      })),
+    }),
+  });
 }
 
-// Admin endpoints
+export async function getCart(): Promise<Cart | null> {
+  const token = getCustomerToken();
+  const res = await fetch(`${API_URL}/cart`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Store-ID': STORE_ID,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (res.status === 404) return null;
+  if (res.status === 401) {
+    clearToken();
+    clearCustomerSession();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }
+  if (!res.ok) {
+    let message = `API error: ${res.status}`;
+    try {
+      const err = await res.json();
+      message = err.detail || err.message || message;
+    } catch {}
+    throw new Error(message);
+  }
+  return res.json();
+}
+
+export function getOrder(id: string): Promise<Order> {
+  return customerApiFetch<Order>(`/orders/${id}`);
+}
+
+export function getMyOrders(): Promise<Order[]> {
+  return customerApiFetch<Order[]>('/orders');
+}
+
+export function getMyAddresses(): Promise<CustomerAddress[]> {
+  return customerApiFetch<CustomerAddress[]>('/addresses');
+}
+
+export function createAddress(data: {
+  label?: string | null;
+  governorate: string;
+  district: string;
+  city: string;
+  street: string;
+  building?: string | null;
+  floor?: string | null;
+  is_default?: boolean;
+}): Promise<CustomerAddress> {
+  return customerApiFetch<CustomerAddress>('/addresses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAddress(id: string): Promise<void> {
+  return customerApiFetch<void>(`/addresses/${id}`, { method: 'DELETE' });
+}
+
+export function setDefaultAddress(id: string): Promise<CustomerAddress> {
+  return customerApiFetch<CustomerAddress>(`/addresses/${id}/default`, { method: 'PATCH' });
+}
+
+export function validatePromoCode(code: string, orderTotal: number): Promise<PromoCodeValidateResponse> {
+  return apiFetch<PromoCodeValidateResponse>('/promo-codes/validate', {
+    method: 'POST',
+    body: JSON.stringify({ code, order_total: orderTotal }),
+  });
+}
+
+// Admin auth
 export function adminLogin(email: string, password: string): Promise<StoreLoginResponse> {
   return apiFetch<StoreLoginResponse>('/auth/login', {
     method: 'POST',
@@ -142,19 +315,9 @@ export function adminLogin(email: string, password: string): Promise<StoreLoginR
   });
 }
 
+// Admin products
 export function adminGetProducts(): Promise<Product[]> {
   return apiFetch<Product[]>('/admin/products');
-}
-
-export async function getStoreSettings(): Promise<StoreSettings> {
-  return apiFetch<StoreSettings>('/admin/settings');
-}
-
-export async function updateStoreSettings(data: { delivery_fee: number }): Promise<StoreSettings> {
-  return apiFetch<StoreSettings>('/admin/settings', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
 }
 
 export function adminCreateProduct(data: {
@@ -165,6 +328,8 @@ export function adminCreateProduct(data: {
   stock: number;
   sku?: string;
   is_active: boolean;
+  product_type?: ProductType;
+  category_id?: string | null;
 }): Promise<Product> {
   return apiFetch<Product>('/admin/products', {
     method: 'POST',
@@ -180,6 +345,8 @@ export function adminUpdateProduct(id: string, data: {
   stock?: number;
   sku?: string;
   is_active?: boolean;
+  product_type?: ProductType;
+  category_id?: string | null;
 }): Promise<Product> {
   return apiFetch<Product>(`/admin/products/${id}`, {
     method: 'PUT',
@@ -191,6 +358,7 @@ export function adminDeleteProduct(id: string): Promise<void> {
   return apiFetch<void>(`/admin/products/${id}`, { method: 'DELETE' });
 }
 
+// Only works for simple/configurable products; variable products return 400.
 export function adminUpdateStock(id: string, change: number, reason?: string): Promise<Product> {
   return apiFetch<Product>(`/admin/products/${id}/stock`, {
     method: 'PATCH',
@@ -198,6 +366,200 @@ export function adminUpdateStock(id: string, change: number, reason?: string): P
   });
 }
 
+export function adminGetProduct(id: string): Promise<Product> {
+  return apiFetch<Product>(`/admin/products/${id}`);
+}
+
+// Admin categories
+export function adminGetCategories(): Promise<Category[]> {
+  return apiFetch<Category[]>('/admin/categories');
+}
+
+export function adminCreateCategory(data: {
+  name: string;
+  slug: string;
+  description?: string | null;
+  parent_id?: string | null;
+  position?: number;
+  is_active: boolean;
+}): Promise<Category> {
+  return apiFetch<Category>('/admin/categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminUpdateCategory(id: string, data: {
+  name?: string;
+  slug?: string;
+  description?: string | null;
+  parent_id?: string | null;
+  position?: number;
+  is_active?: boolean;
+}): Promise<Category> {
+  return apiFetch<Category>(`/admin/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminDeleteCategory(id: string): Promise<void> {
+  return apiFetch<void>(`/admin/categories/${id}`, { method: 'DELETE' });
+}
+
+// Admin option types
+export function adminGetOptionTypes(): Promise<OptionType[]> {
+  return apiFetch<OptionType[]>('/admin/option-types');
+}
+
+export function adminCreateOptionType(data: { name: string; position?: number }): Promise<OptionType> {
+  return apiFetch<OptionType>('/admin/option-types', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminUpdateOptionType(id: string, data: { name?: string; position?: number }): Promise<OptionType> {
+  return apiFetch<OptionType>(`/admin/option-types/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminDeleteOptionType(id: string): Promise<void> {
+  return apiFetch<void>(`/admin/option-types/${id}`, { method: 'DELETE' });
+}
+
+export function adminAddOptionValue(typeId: string, data: { value: string; display_value?: string | null; position?: number }): Promise<OptionValue> {
+  return apiFetch<OptionValue>(`/admin/option-types/${typeId}/values`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminUpdateOptionValue(typeId: string, valueId: string, data: {
+  value?: string;
+  display_value?: string | null;
+  position?: number;
+}): Promise<OptionValue> {
+  return apiFetch<OptionValue>(`/admin/option-types/${typeId}/values/${valueId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminDeleteOptionValue(typeId: string, valueId: string): Promise<void> {
+  return apiFetch<void>(`/admin/option-types/${typeId}/values/${valueId}`, { method: 'DELETE' });
+}
+
+// Admin variant management
+export function adminGetVariants(productId: string): Promise<Variant[]> {
+  return apiFetch<Variant[]>(`/admin/products/${productId}/variants`);
+}
+
+export function adminCreateVariant(productId: string, data: {
+  sku?: string;
+  price: string;
+  compare_price?: string | null;
+  stock: number;
+  is_active: boolean;
+  position?: number;
+  option_value_ids: string[];
+}): Promise<Variant> {
+  return apiFetch<Variant>(`/admin/products/${productId}/variants`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminUpdateVariant(productId: string, variantId: string, data: {
+  sku?: string | null;
+  price?: string;
+  compare_price?: string | null;
+  stock?: number;
+  is_active?: boolean;
+  position?: number;
+  option_value_ids?: string[];
+}): Promise<Variant> {
+  return apiFetch<Variant>(`/admin/products/${productId}/variants/${variantId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminDeleteVariant(productId: string, variantId: string): Promise<void> {
+  return apiFetch<void>(`/admin/products/${productId}/variants/${variantId}`, { method: 'DELETE' });
+}
+
+export function adminSetProductOptionTypes(productId: string, option_type_ids: string[]): Promise<Product> {
+  return apiFetch<Product>(`/admin/products/${productId}/option-types`, {
+    method: 'PUT',
+    body: JSON.stringify({ option_type_ids }),
+  });
+}
+
+// Admin option groups
+export function adminGetOptionGroups(productId: string): Promise<OptionGroup[]> {
+  return apiFetch<OptionGroup[]>(`/admin/products/${productId}/option-groups`);
+}
+
+export function adminCreateOptionGroup(productId: string, data: {
+  name: string;
+  input_type: 'single' | 'multi' | 'text';
+  required: boolean;
+  position?: number;
+}): Promise<OptionGroup> {
+  return apiFetch<OptionGroup>(`/admin/products/${productId}/option-groups`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminUpdateOptionGroup(productId: string, groupId: string, data: {
+  name?: string;
+  input_type?: 'single' | 'multi' | 'text';
+  required?: boolean;
+  position?: number;
+}): Promise<OptionGroup> {
+  return apiFetch<OptionGroup>(`/admin/products/${productId}/option-groups/${groupId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminDeleteOptionGroup(productId: string, groupId: string): Promise<void> {
+  return apiFetch<void>(`/admin/products/${productId}/option-groups/${groupId}`, { method: 'DELETE' });
+}
+
+export function adminAddOptionChoice(productId: string, groupId: string, data: {
+  label: string;
+  price_add_on: string;
+  is_default?: boolean;
+  position?: number;
+}): Promise<OptionChoice> {
+  return apiFetch<OptionChoice>(`/admin/products/${productId}/option-groups/${groupId}/choices`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminUpdateOptionChoice(productId: string, groupId: string, choiceId: string, data: {
+  label?: string;
+  price_add_on?: string;
+  is_default?: boolean;
+  position?: number;
+}): Promise<OptionChoice> {
+  return apiFetch<OptionChoice>(`/admin/products/${productId}/option-groups/${groupId}/choices/${choiceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminDeleteOptionChoice(productId: string, groupId: string, choiceId: string): Promise<void> {
+  return apiFetch<void>(`/admin/products/${productId}/option-groups/${groupId}/choices/${choiceId}`, { method: 'DELETE' });
+}
+
+// Admin orders
 export function adminGetOrders(): Promise<Order[]> {
   return apiFetch<Order[]>('/admin/orders');
 }
@@ -209,6 +571,7 @@ export function adminUpdateOrderStatus(orderId: string, status: Order['status'])
   });
 }
 
+// Admin customers
 export function adminGetCustomers(): Promise<Customer[]> {
   return apiFetch<Customer[]>('/admin/customers');
 }
@@ -217,16 +580,35 @@ export function adminGetCustomersWithStats(): Promise<CustomerWithStats[]> {
   return apiFetch<CustomerWithStats[]>('/admin/customers/with-stats');
 }
 
-// Customer order history (no auth — uses customer_id from session)
-export function getMyOrders(customerId: string): Promise<Order[]> {
-  return apiFetch<Order[]>(`/orders?customer_id=${customerId}`);
+export function adminGetCustomerDetail(id: string): Promise<CustomerDetail> {
+  return apiFetch<CustomerDetail>(`/admin/customers/${id}`);
 }
 
-// Promo code — validate before checkout
-export function validatePromoCode(code: string, orderTotal: number): Promise<PromoCodeValidateResponse> {
-  return apiFetch<PromoCodeValidateResponse>('/promo-codes/validate', {
-    method: 'POST',
-    body: JSON.stringify({ code, order_total: orderTotal }),
+// Admin carts
+export function adminGetAbandonedCarts(): Promise<AbandonedCart[]> {
+  return apiFetch<AbandonedCart[]>('/admin/carts/abandoned');
+}
+
+// Admin analytics
+export function adminGetAnalytics(
+  params: { days?: number; start_date?: string; end_date?: string } = { days: 30 }
+): Promise<AnalyticsData> {
+  const { days, start_date, end_date } = params;
+  if (start_date && end_date) {
+    return apiFetch<AnalyticsData>(`/admin/analytics?start_date=${start_date}&end_date=${end_date}`);
+  }
+  return apiFetch<AnalyticsData>(`/admin/analytics?days=${days ?? 30}`);
+}
+
+// Admin settings
+export async function getStoreSettings(): Promise<StoreSettings> {
+  return apiFetch<StoreSettings>('/admin/settings');
+}
+
+export async function updateStoreSettings(data: { delivery_fee: number }): Promise<StoreSettings> {
+  return apiFetch<StoreSettings>('/admin/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   });
 }
 
@@ -268,22 +650,15 @@ export function adminDeletePromoCode(id: string): Promise<void> {
 }
 
 // ── Product images (public) ────────────────────────────────────────────────────
-
 export function getProductImages(productId: string): Promise<ProductImage[]> {
   return apiFetch<ProductImage[]>(`/products/${productId}/images`);
 }
 
 // ── Product images (admin) ─────────────────────────────────────────────────────
-
-export function adminGetProduct(id: string): Promise<Product> {
-  return apiFetch<Product>(`/admin/products/${id}`);
-}
-
 export function adminGetProductImages(productId: string): Promise<ProductImage[]> {
   return apiFetch<ProductImage[]>(`/admin/products/${productId}/images`);
 }
 
-/** Upload an image directly to the FastAPI server — returns the ready image record with CDN URLs. */
 export async function adminUploadImage(productId: string, file: File): Promise<ProductImage> {
   const token = getToken();
   const form = new FormData();
@@ -294,7 +669,6 @@ export async function adminUploadImage(productId: string, file: File): Promise<P
     headers: {
       'X-Store-ID': STORE_ID,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      // No Content-Type — browser sets it with the correct multipart boundary
     },
     body: form,
   });

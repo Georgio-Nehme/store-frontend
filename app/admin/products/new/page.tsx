@@ -1,15 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { adminCreateProduct, adminUploadImage } from '@/lib/api';
-import { ProductImage } from '@/lib/types';
+import { adminCreateProduct, adminGetCategories, adminUploadImage } from '@/lib/api';
+import { Category, ProductImage, ProductType } from '@/lib/types';
 
 interface UploadedImageItem {
   image: ProductImage;
   previewUrl: string;
   name: string;
+}
+
+function buildCategoryOptions(categories: Category[]) {
+  const byParent = new Map<string | null, Category[]>();
+  categories.forEach(category => {
+    const current = byParent.get(category.parent_id) ?? [];
+    current.push(category);
+    byParent.set(category.parent_id, current);
+  });
+
+  const result: { id: string; label: string }[] = [];
+  const walk = (parentId: string | null, depth: number) => {
+    const items = [...(byParent.get(parentId) ?? [])].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+    items.forEach(item => {
+      result.push({ id: item.id, label: `${'— '.repeat(depth)}${item.name}` });
+      walk(item.id, depth + 1);
+    });
+  };
+
+  walk(null, 0);
+  return result;
 }
 
 export default function NewProductPage() {
@@ -20,6 +41,9 @@ export default function NewProductPage() {
   const [stock, setStock] = useState(0);
   const [sku, setSku] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [productType, setProductType] = useState<ProductType>('simple');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadedImages, setUploadedImages] = useState<UploadedImageItem[]>([]);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
@@ -28,6 +52,12 @@ export default function NewProductPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    adminGetCategories().then(setCategories).catch(() => setCategories([]));
+  }, []);
+
+  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,9 +70,11 @@ export default function NewProductPage() {
         description,
         price,
         compare_price: comparePrice || undefined,
-        stock,
+        stock: productType === 'variable' ? 0 : stock,
         sku: sku || undefined,
         is_active: isActive,
+        product_type: productType,
+        category_id: categoryId || null,
       });
       setCreatedProductId(product.id);
       setSuccessMsg('Product created! You can now upload images below.');
@@ -85,21 +117,42 @@ export default function NewProductPage() {
           {error && <p className="text-red-600 text-sm mb-4 p-3 bg-red-50 rounded-lg">{error}</p>}
           {successMsg && <p className="text-green-600 text-sm mb-4 p-3 bg-green-50 rounded-lg">{successMsg}</p>}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Field label="Name *" required>
+            <Field label="Name *">
               <input type="text" value={name} onChange={e => setName(e.target.value)} required className="input" />
             </Field>
             <Field label="Description">
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="input" />
             </Field>
-            <Field label="Price *" required>
+            <Field label="Product Type *">
+              <select value={productType} onChange={e => setProductType(e.target.value as ProductType)} className="input">
+                <option value="simple">Simple</option>
+                <option value="variable">Variable</option>
+                <option value="configurable">Configurable</option>
+              </select>
+            </Field>
+            <Field label="Category">
+              <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="input">
+                <option value="">Uncategorized</option>
+                {categoryOptions.map(option => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Price *">
               <input type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} required className="input" />
             </Field>
             <Field label="Compare Price (original/was price)">
               <input type="number" step="0.01" min="0" value={comparePrice} onChange={e => setComparePrice(e.target.value)} placeholder="Leave blank for no sale badge" className="input" />
             </Field>
-            <Field label="Stock">
-              <input type="number" min="0" value={stock} onChange={e => setStock(parseInt(e.target.value) || 0)} className="input" />
-            </Field>
+            {productType === 'variable' ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                Stock is managed via variants.
+              </p>
+            ) : (
+              <Field label="Stock">
+                <input type="number" min="0" value={stock} onChange={e => setStock(parseInt(e.target.value) || 0)} className="input" />
+              </Field>
+            )}
             <Field label="SKU">
               <input type="text" value={sku} onChange={e => setSku(e.target.value)} className="input" />
             </Field>
@@ -181,7 +234,7 @@ export default function NewProductPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode; required?: boolean }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>

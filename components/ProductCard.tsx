@@ -9,6 +9,10 @@ interface Props {
   primaryImage?: ProductImage | null;
 }
 
+function formatPrice(value: string) {
+  return `$${parseFloat(value).toFixed(2)}`;
+}
+
 export default function ProductCard({ product, primaryImage }: Props) {
   const { addItem } = useCart();
   const initials = product.name
@@ -18,8 +22,8 @@ export default function ProductCard({ product, primaryImage }: Props) {
     .join('')
     .toUpperCase();
 
-  const isOnSale = product.compare_price !== null &&
-    parseFloat(product.compare_price) > parseFloat(product.price);
+  const isOnSale = product.compare_price !== null && parseFloat(product.compare_price) > parseFloat(product.price);
+  const stockLabel = product.in_stock ? 'In Stock' : 'Out of Stock';
 
   return (
     <div className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow flex flex-col overflow-hidden">
@@ -42,27 +46,44 @@ export default function ProductCard({ product, primaryImage }: Props) {
         </div>
       </Link>
       <div className="p-4 flex flex-col flex-1">
+        {product.category && (
+          <span className="inline-flex w-fit mb-2 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+            {product.category.name}
+          </span>
+        )}
         <Link href={`/products/${product.id}`}>
           <h3 className="font-semibold text-gray-800 hover:text-blue-600 mb-1">{product.name}</h3>
         </Link>
         <div className="mb-1">
-          <span className="text-blue-600 font-bold text-lg">${parseFloat(product.price).toFixed(2)}</span>
-          {isOnSale && (
+          <span className="text-blue-600 font-bold text-lg">
+            {product.product_type === 'variable' ? `From ${formatPrice(product.price)}` : formatPrice(product.price)}
+          </span>
+          {isOnSale && product.product_type !== 'variable' && (
             <span className="ml-2 text-gray-400 line-through text-sm">
-              ${parseFloat(product.compare_price!).toFixed(2)}
+              {formatPrice(product.compare_price!)}
             </span>
           )}
         </div>
-        <p className={`text-sm mb-3 ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
-          {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+        <p className={`text-sm mb-3 ${product.in_stock ? 'text-green-600' : 'text-red-500'}`}>
+          {stockLabel}
         </p>
-        <button
-          onClick={() => addItem(product)}
-          disabled={product.stock === 0}
-          className="mt-auto bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-        >
-          Add to Cart
-        </button>
+
+        {product.product_type === 'simple' ? (
+          <button
+            onClick={() => addItem({ product_id: product.id, product_name: product.name, unit_price: product.price }, 1)}
+            disabled={!product.in_stock}
+            className="mt-auto bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+          >
+            Add to Cart
+          </button>
+        ) : (
+          <Link
+            href={`/products/${product.id}`}
+            className="mt-auto bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium text-center"
+          >
+            {product.product_type === 'variable' ? 'View Options' : 'Customize'}
+          </Link>
+        )}
       </div>
     </div>
   );

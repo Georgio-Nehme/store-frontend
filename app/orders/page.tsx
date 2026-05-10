@@ -34,7 +34,7 @@ export default function MyOrdersPage() {
       router.push('/login');
       return;
     }
-    getMyOrders(session.customer_id)
+    getMyOrders()
       .then(setOrders)
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load orders'))
       .finally(() => setLoading(false));
