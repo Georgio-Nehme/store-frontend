@@ -12,6 +12,10 @@ function formatMoney(value: string | number) {
   return `$${amount.toFixed(2)}`;
 }
 
+function isHexColor(val: string | null | undefined): boolean {
+  return !!val && /^#[0-9A-Fa-f]{3,8}$/.test(val.trim());
+}
+
 function sortChoices<T extends { position: number }>(items: T[]) {
   return [...items].sort((a, b) => a.position - b.position);
 }
@@ -257,6 +261,22 @@ export default function ProductPage() {
                   <div className="flex flex-wrap gap-2">
                     {sortChoices(type.values).map(value => {
                       const isSelected = selectedValues[type.id] === value.id;
+                      if (isHexColor(value.display_value)) {
+                        return (
+                          <button
+                            key={value.id}
+                            type="button"
+                            title={value.value}
+                            onClick={() => setSelectedValues(prev => ({ ...prev, [type.id]: value.id }))}
+                            className={`w-8 h-8 rounded-full border-2 transition-all ${
+                              isSelected
+                                ? 'border-blue-600 scale-110 shadow-md ring-2 ring-blue-200'
+                                : 'border-white shadow hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: value.display_value! }}
+                          />
+                        );
+                      }
                       return (
                         <button
                           key={value.id}

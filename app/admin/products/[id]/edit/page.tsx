@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ProductPreviewPanel } from './ProductPreviewPanel';
 import {
   adminAddOptionChoice,
   adminCreateOptionGroup,
@@ -69,11 +70,18 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ImageManager({ productId }: { productId: string }) {
+function ImageManager({ productId, onImagesChange }: { productId: string; onImagesChange?: (imgs: ProductImage[]) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<ProductImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Keep parent in sync whenever images change
+  const onImagesChangeRef = useRef(onImagesChange);
+  onImagesChangeRef.current = onImagesChange;
+  useEffect(() => {
+    onImagesChangeRef.current?.(images);
+  }, [images]);
 
   function sortImages(imgs: ProductImage[]) {
     return [...imgs].sort((a, b) => {
@@ -663,6 +671,7 @@ export default function EditProductPage() {
   const [stockReason, setStockReason] = useState('');
   const [stockMsg, setStockMsg] = useState('');
   const [saved, setSaved] = useState(false);
+  const [previewImages, setPreviewImages] = useState<ProductImage[]>([]);
 
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
 
@@ -835,7 +844,21 @@ export default function EditProductPage() {
             )}
           </div>
 
-          <ImageManager productId={id} />
+          <div className="space-y-6">
+            <ProductPreviewPanel
+              name={name}
+              description={description}
+              price={price}
+              comparePrice={comparePrice}
+              isActive={isActive}
+              productType={productType}
+              product={product}
+              images={previewImages}
+              categories={categories}
+              categoryId={categoryId}
+            />
+            <ImageManager productId={id} onImagesChange={setPreviewImages} />
+          </div>
         </div>
       </div>
     </div>
