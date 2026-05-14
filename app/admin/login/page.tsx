@@ -56,7 +56,8 @@ export default function AdminLoginPage() {
     try {
       const result = await completeNewPassword(newPassword);
       if (result.type === 'success') window.location.href = '/admin';
-      else setError(result.message);
+      else if (result.type === 'error') setError(result.message);
+      else setError('Could not complete password step');
     } finally {
       setLoading(false);
     }
