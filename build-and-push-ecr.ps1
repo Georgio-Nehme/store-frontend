@@ -18,10 +18,13 @@ Write-Host "Logging into ECR $EcrUri in $Region"
 aws ecr get-login-password --region $Region | docker login --username AWS --password-stdin $EcrUri
 
 $fullTag = "$EcrUri/$ImageName:$Tag"
-Write-Host "Building image $fullTag"
-docker build -f $Dockerfile -t $fullTag .
+$latestTag = "$EcrUri/$ImageName:latest"
+Write-Host "Building image $fullTag and $latestTag"
+docker build -f $Dockerfile -t $fullTag -t $latestTag .
 
 Write-Host "Pushing $fullTag"
 docker push $fullTag
+Write-Host "Pushing $latestTag"
+docker push $latestTag
 
 Write-Host "Done"
