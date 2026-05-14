@@ -2,7 +2,7 @@ name: Build and push store frontend to ECR
 
 on:
   push:
-    branches: [ main, cognito-admin-migration ]
+    branches: [ main ]
 
 jobs:
   build-and-push:
