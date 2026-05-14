@@ -20,10 +20,10 @@ import {
   ProductType,
   PromoCode,
   PromoCodeValidateResponse,
-  StoreLoginResponse,
   StoreSettings,
   Variant,
 } from './types';
+import { getAdminAccessToken } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID || '';
@@ -38,25 +38,37 @@ function buildQuery(params: Record<string, string | number | boolean | null | un
   return query ? `?${query}` : '';
 }
 
-// ── Admin token (JWT for store admin/staff) ────────────────────────────────────
+// ── Admin token (Cognito access token via Amplify) ────────────────────────────
+// Legacy cookie helpers kept for the middleware compatibility layer.
+// The actual token is managed by Amplify (stored in cookies automatically).
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return document.cookie
+  // Amplify stores the token in a cookie. We read it directly for cases
+  // where we need it synchronously. Prefer `getAdminAccessToken()` (async)
+  // which handles token refresh automatically.
+  const match = document.cookie
     .split('; ')
-    .find(row => row.startsWith('store_token='))
-    ?.split('=')[1] || null;
+    .find(row => row.includes('accessToken'));
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match.split('=').slice(1).join('='));
+  } catch {
+    return null;
+  }
 }
 
-export function setToken(token: string): void {
-  if (typeof window === 'undefined') return;
-  const days = 30;
-  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `store_token=${token}; expires=${expires}; path=/; SameSite=Lax`;
-}
+// No-op: Amplify manages the token lifecycle — nothing to set manually.
+export function setToken(_token: string): void {}
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return;
-  document.cookie = 'store_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  // Amplify's signOut() clears all Cognito cookies; this is a safety fallback.
+  document.cookie.split(';').forEach(cookie => {
+    const name = cookie.split('=')[0].trim();
+    if (name.includes('CognitoIdentityServiceProvider') || name.includes('amplify')) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    }
+  });
 }
 
 // ── Customer session + token ───────────────────────────────────────────────────
@@ -101,20 +113,32 @@ export function isAdmin(): boolean {
   if (!token) return false;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.role === 'admin' || payload.role === 'staff';
+    const groups: string[] = payload['cognito:groups'] ?? [];
+    return groups.some(g => g.includes('admin') || g.includes('staff'));
   } catch {
     return false;
   }
 }
 
-async function apiFetch<T>(path: string, options: RequestInit = {}, token: string | null = getToken()): Promise<T> {
+// Paths that require a Cognito admin token (vs. a customer token or no token)
+const ADMIN_PATH_RE = /^\/(admin|platform)\//;
+
+async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
+  let resolvedToken: string | null;
+  if (token !== undefined) {
+    resolvedToken = token;
+  } else if (ADMIN_PATH_RE.test(path)) {
+    resolvedToken = await getAdminAccessToken();
+  } else {
+    resolvedToken = getToken();
+  }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Store-ID': STORE_ID,
     ...((options.headers as Record<string, string>) || {}),
   };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (resolvedToken) {
+    headers.Authorization = `Bearer ${resolvedToken}`;
   }
 
   const res = await fetch(`${API_URL}${path}`, {
@@ -177,7 +201,7 @@ export async function getPublicStoreSettings(): Promise<StoreSettings> {
   const res = await fetch(`${API_URL}/settings`, {
     headers: { 'X-Store-ID': STORE_ID },
   });
-  if (!res.ok) return { delivery_fee: '0' };
+  if (!res.ok) return { delivery_fee: '0', allow_guest_orders: false };
   return res.json();
 }
 
@@ -206,7 +230,18 @@ export function createOrder(data: {
   shipping_address?: string;
   notes?: string;
   promo_code?: string;
+  guest_info?: {
+    name: string;
+    phone: string;
+    email?: string;
+    shipping_address?: string;
+  };
 }): Promise<Order> {
+  // Guest orders have no customer token — pass null explicitly so the backend's
+  // optional-bearer dependency correctly handles the unauthenticated case.
+  if (data.guest_info) {
+    return apiFetch<Order>('/orders', { method: 'POST', body: JSON.stringify(data) }, null);
+  }
   return customerApiFetch<Order>('/orders', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -307,13 +342,8 @@ export function validatePromoCode(code: string, orderTotal: number): Promise<Pro
   });
 }
 
-// Admin auth
-export function adminLogin(email: string, password: string): Promise<StoreLoginResponse> {
-  return apiFetch<StoreLoginResponse>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-}
+// Admin auth is now handled by AWS Cognito via Amplify (see lib/auth.ts).
+// The adminLogin function has been removed — use adminSignIn() from lib/auth.ts instead.
 
 // Admin products
 export function adminGetProducts(): Promise<Product[]> {
@@ -605,7 +635,10 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   return apiFetch<StoreSettings>('/admin/settings');
 }
 
-export async function updateStoreSettings(data: { delivery_fee: number }): Promise<StoreSettings> {
+export async function updateStoreSettings(data: {
+  delivery_fee?: number;
+  allow_guest_orders?: boolean;
+}): Promise<StoreSettings> {
   return apiFetch<StoreSettings>('/admin/settings', {
     method: 'PATCH',
     body: JSON.stringify(data),

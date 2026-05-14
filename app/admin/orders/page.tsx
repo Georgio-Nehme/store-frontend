@@ -104,7 +104,7 @@ export default function AdminOrdersPage() {
                           <p className="font-medium text-gray-800">{customer.name || customer.email}</p>
                           {customer.name && <p className="text-xs text-gray-400">{customer.email}</p>}
                         </div>
-                      ) : <span className="text-gray-400 text-xs font-mono">{o.customer_id.slice(0, 8)}…</span>}
+                      ) : <span className="text-gray-400 text-xs font-mono">{o.customer_id ? `${o.customer_id.slice(0, 8)}…` : 'Guest'}</span>}
                     </td>
                     <td className="px-4 py-3">
                       <select
