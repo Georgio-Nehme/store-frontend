@@ -9,7 +9,6 @@ RUN npm ci
 
 # Build
 COPY . .
-RUN mkdir -p public
 RUN npm run build
 
 # Production image
