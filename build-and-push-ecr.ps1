@@ -6,7 +6,7 @@ param(
     [string]$Region = $env:AWS_REGION
 )
 
-if (-not $Region) { Write-Error "AWS_REGION not set. Provide -Region or set AWS_REGION environment variable."; exit 1 }
+if (-not $Region) { Write-Host "AWS_REGION not set; defaulting to eu-central-1"; $Region = 'eu-central-1' }
 
 Write-Host "Installing dependencies and building frontend"
 if (Test-Path package.json) {
