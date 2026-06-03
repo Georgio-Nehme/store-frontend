@@ -264,6 +264,7 @@ export interface Order {
 
 export interface StoreSettings {
   delivery_fee: string;
+  allow_guest_orders: boolean;
 }
 
 export interface PromoCode {
@@ -286,13 +287,6 @@ export interface PromoCodeValidateResponse {
   discount_amount: string;
   final_total: string;
   message: string;
-}
-
-export interface StoreLoginResponse {
-  access_token: string;
-  token_type: string;
-  role: string;
-  store_id: string;
 }
 
 export interface ProductImage {

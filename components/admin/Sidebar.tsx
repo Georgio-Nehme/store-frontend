@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { clearToken } from '@/lib/api';
+import { adminSignOut } from '@/lib/auth';
 
 const links = [
   { href: '/admin', label: 'Dashboard' },
@@ -13,14 +13,15 @@ const links = [
   { href: '/admin/customers', label: 'Customers' },
   { href: '/admin/promo-codes', label: 'Promo Codes' },
   { href: '/admin/settings', label: 'Settings' },
+  { href: '/admin/account/password', label: 'Change Password' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  function handleLogout() {
-    clearToken();
+  async function handleLogout() {
+    await adminSignOut();
     router.push('/admin/login');
   }
 

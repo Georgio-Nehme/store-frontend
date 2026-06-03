@@ -57,13 +57,22 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
   const [hasSession, setHasSession] = useState(false);
+  const [allowGuestOrders, setAllowGuestOrders] = useState(false);
+
+  // Guest-specific fields
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
 
   useEffect(() => {
     const session = getCustomerSession();
     setHasSession(!!session);
 
     getPublicStoreSettings()
-      .then(settings => setDeliveryFee(parseFloat(settings.delivery_fee) || 0))
+      .then(settings => {
+        setDeliveryFee(parseFloat(settings.delivery_fee) || 0);
+        setAllowGuestOrders(settings.allow_guest_orders ?? false);
+      })
       .catch(() => setDeliveryFee(0));
 
     if (!session) {
@@ -91,7 +100,10 @@ export default function CheckoutPage() {
   const selectedSavedAddress = savedAddresses.find(saved => saved.id === selectedAddressId) ?? null;
   const usingNewAddress = selectedSavedAddress === null;
 
-  if (!hasSession) {
+  const isGuest = !hasSession && allowGuestOrders;
+
+  // If not logged in and guest orders not allowed, show gate
+  if (!hasSession && !allowGuestOrders) {
     return (
       <main className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-700 text-lg mb-4">Please log in to checkout</p>
@@ -107,6 +119,11 @@ export default function CheckoutPage() {
           <h2 className="text-2xl font-bold text-green-700 mb-2">Order Placed!</h2>
           <p className="text-gray-600 mb-4">Order ID: <span className="font-mono font-semibold">{orderId}</span></p>
           {successNote && <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">{successNote}</p>}
+          {isGuest && (
+            <p className="text-sm text-gray-500 mb-4">
+              Save your order ID — guest orders don&apos;t appear in an account history.
+            </p>
+          )}
           <Link href="/" className="text-blue-600 hover:underline">Continue Shopping</Link>
         </div>
       </main>
@@ -153,13 +170,25 @@ export default function CheckoutPage() {
     setError(null);
     setSuccessNote(null);
 
-    const customerId = getCustomerId();
-    if (!customerId) {
-      setError('Invalid session. Please log in again.');
-      return;
+    if (!isGuest) {
+      const customerId = getCustomerId();
+      if (!customerId) {
+        setError('Invalid session. Please log in again.');
+        return;
+      }
     }
+
     if (!hasRequiredAddressFields()) {
       setError('Governorate, district, city, and street are required.');
+      return;
+    }
+
+    if (isGuest && !guestName.trim()) {
+      setError('Name is required.');
+      return;
+    }
+    if (isGuest && !guestPhone.trim()) {
+      setError('Phone number is required.');
       return;
     }
 
@@ -179,9 +208,19 @@ export default function CheckoutPage() {
         shipping_address: shippingAddress,
         notes: notes || undefined,
         promo_code: promoValid ? promoCode.trim() : undefined,
+        ...(isGuest
+          ? {
+              guest_info: {
+                name: guestName.trim(),
+                phone: guestPhone.trim(),
+                email: guestEmail.trim() || undefined,
+                shipping_address: shippingAddress,
+              },
+            }
+          : {}),
       });
 
-      if (usingNewAddress && saveAddressForFuture) {
+      if (!isGuest && usingNewAddress && saveAddressForFuture) {
         try {
           await createAddress({
             label: addressLabel.trim() || null,
@@ -214,6 +253,18 @@ export default function CheckoutPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Checkout</h1>
+
+      {isGuest && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <span className="text-blue-500 text-lg mt-0.5">ℹ️</span>
+          <div className="text-sm text-blue-800">
+            <p className="font-medium">Checking out as guest</p>
+            <p className="mt-1">
+              <Link href="/login" className="underline hover:text-blue-600">Log in or create an account</Link> to track your orders and save your address.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow p-6 mb-6">
         <h2 className="font-semibold text-gray-700 mb-4">Order Summary</h2>
@@ -261,6 +312,36 @@ export default function CheckoutPage() {
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 flex flex-col gap-4">
           {error && <p className="text-red-600 text-sm p-3 bg-red-50 rounded-lg">{error}</p>}
 
+          {/* Guest contact info */}
+          {isGuest && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-700">Your Contact Info</h3>
+              <input
+                type="text"
+                placeholder="Full name *"
+                value={guestName}
+                onChange={e => setGuestName(e.target.value)}
+                required
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="tel"
+                placeholder="Phone number *"
+                value={guestPhone}
+                onChange={e => setGuestPhone(e.target.value)}
+                required
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="email"
+                placeholder="Email (optional)"
+                value={guestEmail}
+                onChange={e => setGuestEmail(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Promo Code</label>
             {promoValid ? (
@@ -294,11 +375,11 @@ export default function CheckoutPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">Shipping Address</label>
-            {addressesLoading ? (
+            {addressesLoading && !isGuest ? (
               <div className="text-sm text-gray-500 border rounded-lg px-4 py-3">Loading saved addresses...</div>
             ) : (
               <div className="space-y-4">
-                {savedAddresses.length > 0 && (
+                {!isGuest && savedAddresses.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">Saved Addresses</p>
                     {savedAddresses.map(saved => (
@@ -341,9 +422,9 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {usingNewAddress && <LebanonAddressForm value={address} onChange={setAddress} />}
+                {(isGuest || usingNewAddress) && <LebanonAddressForm value={address} onChange={setAddress} />}
 
-                {usingNewAddress && (
+                {!isGuest && usingNewAddress && (
                   <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input
@@ -383,7 +464,7 @@ export default function CheckoutPage() {
           </div>
           <button
             type="submit"
-            disabled={loading || addressesLoading}
+            disabled={loading || (!isGuest && addressesLoading)}
             className="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors"
           >
             {loading ? 'Placing Order...' : `Place Order · $${finalTotal.toFixed(2)}`}
