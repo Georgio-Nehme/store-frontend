@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { configureAmplify, changePassword } from '@/lib/auth';
-
-configureAmplify();
+import { changePassword } from '@/lib/auth';
 
 export default function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState('');

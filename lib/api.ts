@@ -38,37 +38,17 @@ function buildQuery(params: Record<string, string | number | boolean | null | un
   return query ? `?${query}` : '';
 }
 
-// ── Admin token (Cognito access token via Amplify) ────────────────────────────
-// Legacy cookie helpers kept for the middleware compatibility layer.
-// The actual token is managed by Amplify (stored in cookies automatically).
+// ── Admin token (store admin cookie token) ─────────────────────────────────────
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  // Amplify stores the token in a cookie. We read it directly for cases
-  // where we need it synchronously. Prefer `getAdminAccessToken()` (async)
-  // which handles token refresh automatically.
-  const match = document.cookie
-    .split('; ')
-    .find(row => row.includes('accessToken'));
-  if (!match) return null;
-  try {
-    return decodeURIComponent(match.split('=').slice(1).join('='));
-  } catch {
-    return null;
-  }
+  return getAdminAccessToken();
 }
 
-// No-op: Amplify manages the token lifecycle — nothing to set manually.
 export function setToken(_token: string): void {}
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return;
-  // Amplify's signOut() clears all Cognito cookies; this is a safety fallback.
-  document.cookie.split(';').forEach(cookie => {
-    const name = cookie.split('=')[0].trim();
-    if (name.includes('CognitoIdentityServiceProvider') || name.includes('amplify')) {
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    }
-  });
+  document.cookie = 'store_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  document.cookie = 'store_refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 }
 
 // ── Customer session + token ───────────────────────────────────────────────────
@@ -120,7 +100,7 @@ export function isAdmin(): boolean {
   }
 }
 
-// Paths that require a Cognito admin token (vs. a customer token or no token)
+// Paths that require a store admin token (vs. a customer token or no token)
 const ADMIN_PATH_RE = /^\/(admin|platform)\//;
 
 async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
@@ -128,7 +108,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}, token?: stri
   if (token !== undefined) {
     resolvedToken = token;
   } else if (ADMIN_PATH_RE.test(path)) {
-    resolvedToken = await getAdminAccessToken();
+    resolvedToken = getAdminAccessToken();
   } else {
     resolvedToken = getToken();
   }
@@ -342,7 +322,7 @@ export function validatePromoCode(code: string, orderTotal: number): Promise<Pro
   });
 }
 
-// Admin auth is now handled by AWS Cognito via Amplify (see lib/auth.ts).
+// Admin auth is handled by backend-issued Cognito tokens stored in browser cookies.
 // The adminLogin function has been removed — use adminSignIn() from lib/auth.ts instead.
 
 // Admin products

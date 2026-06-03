@@ -1,136 +1,169 @@
-/**
- * Cognito / Amplify auth helpers for admin users (platform admins + store admins/staff).
- *
- * Amplify is configured to store tokens in cookies so the Next.js middleware
- * can read them server-side for route protection.
- *
- * Customer auth is self-managed (JWT in localStorage) and is unchanged.
- */
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/+$/, '');
+const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID ?? '';
 
-import { Amplify } from 'aws-amplify';
-import {
-  signIn as amplifySignIn,
-  signOut as amplifySignOut,
-  fetchAuthSession,
-  confirmSignIn,
-  updatePassword,
-  resetPassword,
-  confirmResetPassword,
-  type SignInOutput,
-} from 'aws-amplify/auth';
-import { CookieStorage } from 'aws-amplify/utils';
-import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
-
-// ── Configure Amplify (called once, idempotent) ────────────────────────────────
-
-let configured = false;
-
-export function configureAmplify() {
-  if (configured) return;
-  configured = true;
-
-  Amplify.configure({
-    Auth: {
-      Cognito: {
-        userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID!,
-        userPoolClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!,
-        loginWith: { email: true },
-      },
-    },
-  });
-
-  // Store tokens in cookies so Next.js middleware can read them
-  cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage({
-    domain: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
-    path: '/',
-    expires: 365,
-    secure: false,
-    sameSite: 'lax',
-  }));
+function getStoreHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (STORE_ID) headers['X-Store-ID'] = STORE_ID;
+  return headers;
 }
 
-// ── Auth actions ───────────────────────────────────────────────────────────────
+function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/${secure}; SameSite=Lax`;
+}
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.split('; ').find(c => c.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.split('=')[1]) : null;
+}
+
+function deleteCookie(name: string) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+}
+
+export function configureAmplify() {}
+
+export function getAdminAccessToken(): string | null {
+  return getCookie('store_token');
+}
 
 export type AdminSignInResult =
   | { type: 'success' }
-  | { type: 'new_password_required' }
+  | { type: 'new_password_required'; session: string; username: string }
   | { type: 'error'; message: string };
 
-/**
- * Sign in an admin user with email + password.
- * Returns the outcome so the caller can react (success, new password required, error).
- */
-export async function adminSignIn(
-  email: string,
-  password: string,
-): Promise<AdminSignInResult> {
-  configureAmplify();
+export async function adminSignIn(email: string, password: string): Promise<AdminSignInResult> {
   try {
-    const result: SignInOutput = await amplifySignIn({ username: email, password });
+    const res = await fetch(`${API_BASE}/auth/admin-login`, {
+      method: 'POST',
+      headers: getStoreHeaders(),
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { type: 'error', message: data.detail ?? 'Login failed' };
 
-    if (result.isSignedIn) {
-      return { type: 'success' };
+    if (data.challenge === 'new_password_required') {
+      return { type: 'new_password_required', session: data.session, username: data.username };
     }
 
-    if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-      return { type: 'new_password_required' };
-    }
-
-    return { type: 'error', message: 'Unexpected sign-in step' };
-  } catch (err: unknown) {
-    // Stale session in cookies — clear it and retry once
-    if (err instanceof Error && err.name === 'UserAlreadyAuthenticatedException') {
-      await amplifySignOut();
-      return adminSignIn(email, password);
-    }
-    const msg = err instanceof Error ? err.message : 'Sign-in failed';
-    return { type: 'error', message: msg };
+    setCookie('store_token', data.access_token, 1);
+    setCookie('store_refresh_token', data.refresh_token, 30);
+    return { type: 'success' };
+  } catch (err) {
+    return { type: 'error', message: err instanceof Error ? err.message : 'Login failed' };
   }
 }
 
-/**
- * Complete the mandatory new-password challenge (first Cognito login).
- */
 export async function completeNewPassword(
+  username: string,
+  session: string,
   newPassword: string,
 ): Promise<AdminSignInResult> {
-  configureAmplify();
   try {
-    const result = await confirmSignIn({ challengeResponse: newPassword });
-    return result.isSignedIn ? { type: 'success' } : { type: 'error', message: 'Could not complete sign-in' };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to set new password';
-    return { type: 'error', message: msg };
+    const res = await fetch(`${API_BASE}/auth/admin-complete-new-password`, {
+      method: 'POST',
+      headers: getStoreHeaders(),
+      body: JSON.stringify({ username, session, new_password: newPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { type: 'error', message: data.detail ?? 'Failed to set password' };
+
+    setCookie('store_token', data.access_token, 1);
+    setCookie('store_refresh_token', data.refresh_token, 30);
+    return { type: 'success' };
+  } catch (err) {
+    return { type: 'error', message: err instanceof Error ? err.message : 'Failed to set password' };
   }
 }
 
-/**
- * Sign out the current admin user and clear all Cognito tokens.
- */
 export async function adminSignOut(): Promise<void> {
-  configureAmplify();
-  await amplifySignOut();
+  const token = getAdminAccessToken();
+  try {
+    const headers: Record<string, string> = { ...getStoreHeaders() };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    await fetch(`${API_BASE}/auth/admin-logout`, { method: 'POST', headers });
+  } catch {}
+  deleteCookie('store_token');
+  deleteCookie('store_refresh_token');
 }
 
-/**
- * Returns the current Cognito access token string, or null if not signed in.
- * This token is sent as `Authorization: Bearer <token>` to the backend.
- */
-export async function getAdminAccessToken(): Promise<string | null> {
-  configureAmplify();
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getCookie('store_refresh_token');
+  if (!refreshToken) return null;
   try {
-    const session = await fetchAuthSession();
-    return session.tokens?.accessToken?.toString() ?? null;
+    const res = await fetch(`${API_BASE}/auth/admin-refresh`, {
+      method: 'POST',
+      headers: getStoreHeaders(),
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    setCookie('store_token', data.access_token, 1);
+    return data.access_token;
   } catch {
     return null;
   }
 }
 
-/**
- * Decode the JWT payload without verifying the signature.
- * Used client-side for lightweight checks (expiry, groups).
- * Full RS256 verification is always done by the backend.
- */
+export async function forgotPasswordRequest(
+  email: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+      method: 'POST',
+      headers: getStoreHeaders(),
+      body: JSON.stringify({ email }),
+    });
+    if (res.ok || res.status === 204) return { ok: true };
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, message: data.detail ?? 'Could not send reset code' };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Could not send reset code' };
+  }
+}
+
+export async function forgotPasswordConfirm(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/confirm-forgot-password`, {
+      method: 'POST',
+      headers: getStoreHeaders(),
+      body: JSON.stringify({ email, code, new_password: newPassword }),
+    });
+    if (res.ok || res.status === 204) return { ok: true };
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, message: data.detail ?? 'Could not reset password' };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Could not reset password' };
+  }
+}
+
+export async function changePassword(
+  oldPassword: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const token = getAdminAccessToken();
+  try {
+    const headers: Record<string, string> = { ...getStoreHeaders() };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/auth/admin-change-password`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    });
+    if (res.ok || res.status === 204) return { ok: true };
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, message: data.detail ?? 'Failed to change password' };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to change password' };
+  }
+}
+
 export function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.');
@@ -142,56 +175,10 @@ export function decodeJwtPayload(token: string): Record<string, unknown> | null 
   }
 }
 
-/**
- * Returns true if the given token is not yet expired.
- */
 export function isTokenValid(token: string): boolean {
   const payload = decodeJwtPayload(token);
   if (!payload || typeof payload.exp !== 'number') return false;
   return payload.exp * 1000 > Date.now();
 }
 
-// Cookie name Amplify uses for the access token (matches what middleware reads)
-export const COGNITO_ACCESS_TOKEN_COOKIE = 'CognitoAccessToken';
-
-/** Change password for the currently signed-in admin/staff user. */
-export async function changePassword(
-  oldPassword: string,
-  newPassword: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  configureAmplify();
-  try {
-    await updatePassword({ oldPassword, newPassword });
-    return { ok: true };
-  } catch (err: unknown) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to change password' };
-  }
-}
-
-/** Step 1 of forgot-password: send a verification code to the user's email. */
-export async function forgotPasswordRequest(
-  email: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  configureAmplify();
-  try {
-    await resetPassword({ username: email });
-    return { ok: true };
-  } catch (err: unknown) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Could not send reset code' };
-  }
-}
-
-/** Step 2 of forgot-password: confirm with the code received by email. */
-export async function forgotPasswordConfirm(
-  email: string,
-  code: string,
-  newPassword: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  configureAmplify();
-  try {
-    await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
-    return { ok: true };
-  } catch (err: unknown) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Could not reset password' };
-  }
-}
+export const COGNITO_ACCESS_TOKEN_COOKIE = 'store_token';

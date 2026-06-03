@@ -3,14 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  configureAmplify,
   adminSignIn,
   completeNewPassword,
   forgotPasswordRequest,
   forgotPasswordConfirm,
+  getAdminAccessToken,
 } from '@/lib/auth';
-
-configureAmplify();
 
 type Step = 'login' | 'new_password' | 'forgot_send' | 'forgot_confirm';
 
@@ -21,17 +19,16 @@ export default function AdminLoginPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
+  const [challengeSession, setChallengeSession] = useState<string>('');
+  const [challengeUsername, setChallengeUsername] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    import('@/lib/auth').then(({ getAdminAccessToken }) =>
-      getAdminAccessToken().then(token => {
-        if (token) router.replace('/admin');
-      }),
-    );
+    const token = getAdminAccessToken();
+    if (token) router.replace('/admin');
   }, [router]);
 
   async function handleLogin(e: React.FormEvent) {
@@ -41,8 +38,11 @@ export default function AdminLoginPage() {
     try {
       const result = await adminSignIn(email, password);
       if (result.type === 'success') window.location.href = '/admin';
-      else if (result.type === 'new_password_required') setStep('new_password');
-      else setError(result.message);
+      else if (result.type === 'new_password_required') {
+        setChallengeSession(result.session);
+        setChallengeUsername(result.username);
+        setStep('new_password');
+      } else setError(result.message);
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
     if (newPassword !== confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true);
     try {
-      const result = await completeNewPassword(newPassword);
+      const result = await completeNewPassword(challengeUsername, challengeSession, newPassword);
       if (result.type === 'success') window.location.href = '/admin';
       else if (result.type === 'error') setError(result.message);
       else setError('Could not complete password step');
