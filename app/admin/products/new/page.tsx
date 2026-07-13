@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminCreateProduct, adminGetCategories, adminUploadImage } from '@/lib/api';
 import { Category, ProductImage, ProductType } from '@/lib/types';
+import { VariantManager } from '@/components/admin/VariantManager';
 
 interface UploadedImageItem {
   image: ProductImage;
@@ -215,7 +216,7 @@ export default function NewProductPage() {
               </div>
             )}
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={() => router.push('/admin/products')}
@@ -223,11 +224,19 @@ export default function NewProductPage() {
               >
                 Done - Go to Products List
               </button>
-              <Link href="/admin/products" className="py-2 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+              <Link href="/admin/products" className="py-2 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors text-center">
                 Go to Products
               </Link>
             </div>
           </div>
+        )}
+
+        {createdProductId && productType === 'variable' && (
+          <VariantManager
+            productId={createdProductId}
+            assignedOptionTypes={[]}
+            onRefreshProduct={async () => {}}
+          />
         )}
       </div>
     </div>

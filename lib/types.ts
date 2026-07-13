@@ -293,6 +293,7 @@ export interface ProductImage {
   id: string;
   product_id: string;
   store_id: string;
+  variant_id: string | null;
   status: 'pending' | 'processing' | 'ready' | 'failed';
   position: number;
   is_primary: boolean;

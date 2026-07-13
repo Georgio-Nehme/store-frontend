@@ -71,8 +71,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto px-4 py-16">
-      <div className="bg-white rounded-xl shadow p-8">
+    <main className="max-w-md mx-auto px-4 py-10 sm:py-16">
+      <div className="bg-white rounded-xl shadow p-6 sm:p-8">
         <div className="flex mb-6 border-b">
           <button
             onClick={() => setTab('signin')}

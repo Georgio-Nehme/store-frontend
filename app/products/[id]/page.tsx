@@ -83,6 +83,16 @@ export default function ProductPage() {
     ) ?? null;
   }, [optionTypes, product, selectedValues, variants]);
 
+  const displayImages = useMemo(() => {
+    if (!selectedVariant) return images.filter(img => !img.variant_id);
+    const variantImages = images.filter(img => img.variant_id === selectedVariant.id);
+    return variantImages.length ? variantImages : images.filter(img => !img.variant_id);
+  }, [images, selectedVariant]);
+
+  useEffect(() => {
+    setActiveIdx(0);
+  }, [selectedVariant?.id]);
+
   const liveConfigPrice = useMemo(() => {
     if (!product || product.product_type !== 'configurable') return product?.price ?? '0';
     const addOnTotal = optionGroups.reduce((sum, group) => {
@@ -184,7 +194,7 @@ export default function ProductPage() {
   if (!product) return null;
 
   const initials = product.name.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
-  const activeImage = images[activeIdx] ?? null;
+  const activeImage = displayImages[activeIdx] ?? null;
   const displayedPrice = product.product_type === 'variable'
     ? selectedVariant?.price ?? product.price
     : product.product_type === 'configurable'
@@ -214,9 +224,9 @@ export default function ProductPage() {
             )}
           </div>
 
-          {images.length > 1 && (
+          {displayImages.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {images.map((img, i) => (
+              {displayImages.map((img, i) => (
                 <button
                   key={img.id}
                   onClick={() => setActiveIdx(i)}

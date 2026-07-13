@@ -7,6 +7,7 @@ import Sidebar from '@/components/admin/Sidebar';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,8 +39,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 bg-gray-100 p-8 overflow-auto">{children}</main>
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="lg:hidden flex items-center gap-3 bg-gray-900 text-white px-4 py-3 sticky top-0 z-20">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+            className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="font-semibold">Admin Panel</span>
+        </div>
+        <main className="flex-1 bg-gray-100 p-4 md:p-8 overflow-auto">{children}</main>
+      </div>
     </div>
   );
 }

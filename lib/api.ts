@@ -672,10 +672,11 @@ export function adminGetProductImages(productId: string): Promise<ProductImage[]
   return apiFetch<ProductImage[]>(`/admin/products/${productId}/images`);
 }
 
-export async function adminUploadImage(productId: string, file: File): Promise<ProductImage> {
+export async function adminUploadImage(productId: string, file: File, variantId?: string): Promise<ProductImage> {
   const token = getToken();
   const form = new FormData();
   form.append('file', file);
+  if (variantId) form.append('variant_id', variantId);
 
   const res = await fetch(`${API_URL}/admin/products/${productId}/images`, {
     method: 'POST',

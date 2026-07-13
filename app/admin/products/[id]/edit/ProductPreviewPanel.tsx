@@ -51,17 +51,6 @@ export function ProductPreviewPanel({
     setGroupSelections({});
   }, [productType]);
 
-  // Keep activeImgIdx in bounds when images change
-  useEffect(() => {
-    setActiveImgIdx(idx => (idx >= images.length ? 0 : idx));
-  }, [images.length]);
-
-  const sortedImages = [...images].sort((a, b) => {
-    if (a.is_primary && !b.is_primary) return -1;
-    if (!a.is_primary && b.is_primary) return 1;
-    return a.position - b.position;
-  });
-  const activeImage = sortedImages[activeImgIdx] ?? null;
   const initials = name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 
   const category = categories.find(c => c.id === categoryId) ?? product?.category ?? null;
@@ -79,6 +68,27 @@ export function ProductPreviewPanel({
       ),
     ) ?? null;
   }, [optionTypes, selectedValues, variants, productType]);
+
+  const sortedImages = [...images].sort((a, b) => {
+    if (a.is_primary && !b.is_primary) return -1;
+    if (!a.is_primary && b.is_primary) return 1;
+    return a.position - b.position;
+  });
+
+  const displayImages = useMemo(() => {
+    if (!selectedVariant) return sortedImages.filter(img => !img.variant_id);
+    const variantImages = sortedImages.filter(img => img.variant_id === selectedVariant.id);
+    return variantImages.length ? variantImages : sortedImages.filter(img => !img.variant_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images, selectedVariant]);
+
+  // Keep activeImgIdx in bounds when the displayed image set changes
+  useEffect(() => {
+    setActiveImgIdx(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVariant?.id, images.length]);
+
+  const activeImage = displayImages[activeImgIdx] ?? null;
 
   const livePrice = useMemo(() => {
     if (productType !== 'configurable') return price || '0';
@@ -122,9 +132,9 @@ export function ProductPreviewPanel({
       </div>
 
       {/* Thumbnail strip */}
-      {sortedImages.length > 1 && (
+      {displayImages.length > 1 && (
         <div className="flex gap-1.5 overflow-x-auto pb-1 mb-3">
-          {sortedImages.map((img, i) => (
+          {displayImages.map((img, i) => (
             <button
               key={img.id}
               onClick={() => setActiveImgIdx(i)}

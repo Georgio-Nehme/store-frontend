@@ -4,27 +4,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProductPreviewPanel } from './ProductPreviewPanel';
+import { VariantManager } from '@/components/admin/VariantManager';
+import { OptionGroupManager } from '@/components/admin/OptionGroupManager';
 import {
-  adminAddOptionChoice,
-  adminCreateOptionGroup,
-  adminCreateVariant,
-  adminDeleteOptionChoice,
-  adminDeleteOptionGroup,
-  adminDeleteVariant,
   adminGetCategories,
-  adminGetOptionGroups,
-  adminGetOptionTypes,
   adminGetProduct,
   adminGetProductImages,
-  adminGetVariants,
-  adminSetProductOptionTypes,
   adminUpdateProduct,
   adminUpdateProductImage,
   adminUpdateStock,
   adminUploadImage,
   adminDeleteProductImage,
 } from '@/lib/api';
-import { Category, InputType, OptionGroup, OptionType, Product, ProductImage, ProductType, Variant } from '@/lib/types';
+import { Category, Product, ProductImage, ProductType } from '@/lib/types';
 
 const STATUS_STYLES: Record<string, string> = {
   ready: 'bg-green-100 text-green-800',
@@ -32,14 +24,6 @@ const STATUS_STYLES: Record<string, string> = {
   processing: 'bg-blue-100 text-blue-800',
   failed: 'bg-red-100 text-red-800',
 };
-
-function formatMoney(value: string) {
-  return `$${parseFloat(value || '0').toFixed(2)}`;
-}
-
-function sortByPosition<T extends { position: number }>(items: T[]) {
-  return [...items].sort((a, b) => a.position - b.position);
-}
 
 function buildCategoryOptions(categories: Category[]) {
   const byParent = new Map<string | null, Category[]>();
@@ -220,438 +204,6 @@ function ImageManager({ productId, onImagesChange }: { productId: string; onImag
   );
 }
 
-function VariantManager({
-  productId,
-  assignedOptionTypes,
-  onRefreshProduct,
-}: {
-  productId: string;
-  assignedOptionTypes: OptionType[];
-  onRefreshProduct: () => Promise<void>;
-}) {
-  const [availableTypes, setAvailableTypes] = useState<OptionType[]>([]);
-  const [variants, setVariants] = useState<Variant[]>([]);
-  const [selectedTypeIds, setSelectedTypeIds] = useState<string[]>(assignedOptionTypes.map(type => type.id));
-  const [showAddVariant, setShowAddVariant] = useState(false);
-  const [formValues, setFormValues] = useState<Record<string, string>>({});
-  const [price, setPrice] = useState('');
-  const [comparePrice, setComparePrice] = useState('');
-  const [stock, setStock] = useState(0);
-  const [sku, setSku] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [savingTypes, setSavingTypes] = useState(false);
-  const [submittingVariant, setSubmittingVariant] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function loadData() {
-    const [types, variantList] = await Promise.all([adminGetOptionTypes(), adminGetVariants(productId)]);
-    setAvailableTypes(sortByPosition(types));
-    setVariants(sortByPosition(variantList));
-  }
-
-  useEffect(() => {
-    setSelectedTypeIds(assignedOptionTypes.map(type => type.id));
-  }, [assignedOptionTypes]);
-
-  useEffect(() => {
-    loadData().catch(() => setError('Failed to load variant data.'));
-  }, [productId]);
-
-  const selectedTypes = assignedOptionTypes;
-
-  async function handleSaveAssignedTypes() {
-    setSavingTypes(true);
-    setError(null);
-    try {
-      await adminSetProductOptionTypes(productId, selectedTypeIds);
-      await Promise.all([loadData(), onRefreshProduct()]);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save option types');
-    } finally {
-      setSavingTypes(false);
-    }
-  }
-
-  async function handleAddVariant(e: React.FormEvent) {
-    e.preventDefault();
-    if (selectedTypes.some(type => !formValues[type.id])) {
-      setError('Select a value for each assigned option type.');
-      return;
-    }
-
-    setSubmittingVariant(true);
-    setError(null);
-    try {
-      await adminCreateVariant(productId, {
-        sku: sku || undefined,
-        price,
-        compare_price: comparePrice || null,
-        stock,
-        is_active: isActive,
-        option_value_ids: selectedTypes.map(type => formValues[type.id]),
-      });
-      setShowAddVariant(false);
-      setFormValues({});
-      setPrice('');
-      setComparePrice('');
-      setStock(0);
-      setSku('');
-      setIsActive(true);
-      await Promise.all([loadData(), onRefreshProduct()]);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create variant');
-    } finally {
-      setSubmittingVariant(false);
-    }
-  }
-
-  async function handleDeleteVariant(variantId: string) {
-    if (!confirm('Delete this variant?')) return;
-    try {
-      await adminDeleteVariant(productId, variantId);
-      await Promise.all([loadData(), onRefreshProduct()]);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Delete failed');
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-xl shadow p-6 space-y-6">
-      <div>
-        <h2 className="font-semibold text-gray-800">Variant Manager</h2>
-        <p className="text-sm text-gray-500 mt-1">Assign store option types, then create concrete variants.</p>
-      </div>
-
-      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-gray-700">Assigned Option Types</p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {availableTypes.map(type => (
-            <label key={type.id} className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
-              <input
-                type="checkbox"
-                checked={selectedTypeIds.includes(type.id)}
-                onChange={e => setSelectedTypeIds(prev =>
-                  e.target.checked ? [...prev, type.id] : prev.filter(id => id !== type.id),
-                )}
-                className="mt-1"
-              />
-              <div>
-                <p className="font-medium text-gray-800">{type.name}</p>
-                <p className="text-xs text-gray-500 mt-1">{sortByPosition(type.values).map(value => value.display_value || value.value).join(', ') || 'No values yet'}</p>
-              </div>
-            </label>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={handleSaveAssignedTypes}
-          disabled={savingTypes}
-          className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800 disabled:bg-gray-300"
-        >
-          {savingTypes ? 'Saving...' : 'Save Option Types'}
-        </button>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-gray-800">Variants</h3>
-          <button
-            type="button"
-            onClick={() => setShowAddVariant(prev => !prev)}
-            disabled={selectedTypes.length === 0}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:bg-gray-300"
-          >
-            {showAddVariant ? 'Cancel' : 'Add Variant'}
-          </button>
-        </div>
-
-        {selectedTypes.length === 0 && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-            Assign at least one option type before creating variants.
-          </p>
-        )}
-
-        {showAddVariant && selectedTypes.length > 0 && (
-          <form onSubmit={handleAddVariant} className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-4 mb-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              {selectedTypes.map(type => (
-                <div key={type.id}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{type.name}</label>
-                  <select
-                    value={formValues[type.id] || ''}
-                    onChange={e => setFormValues(prev => ({ ...prev, [type.id]: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2"
-                    required
-                  >
-                    <option value="">Select value</option>
-                    {sortByPosition(type.values).map(value => (
-                      <option key={value.id} value={value.id}>{value.display_value || value.value}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-                <input type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} required className="w-full border rounded-lg px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Compare Price</label>
-                <input type="number" step="0.01" min="0" value={comparePrice} onChange={e => setComparePrice(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-                <input type="number" min="0" value={stock} onChange={e => setStock(parseInt(e.target.value) || 0)} className="w-full border rounded-lg px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
-                <input type="text" value={sku} onChange={e => setSku(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
-              Active variant
-            </label>
-            <button type="submit" disabled={submittingVariant} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:bg-gray-300">
-              {submittingVariant ? 'Adding...' : 'Create Variant'}
-            </button>
-          </form>
-        )}
-
-        <div className="overflow-x-auto border border-gray-200 rounded-xl">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
-              <tr>
-                <th className="px-4 py-3 text-left">Option Values</th>
-                <th className="px-4 py-3 text-left">Price</th>
-                <th className="px-4 py-3 text-left">Stock</th>
-                <th className="px-4 py-3 text-left">SKU</th>
-                <th className="px-4 py-3 text-left">Active</th>
-                <th className="px-4 py-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {variants.map(variant => (
-                <tr key={variant.id} className="border-t">
-                  <td className="px-4 py-3">{variant.option_values.map(value => `${value.option_type_name}: ${value.value}`).join(' / ')}</td>
-                  <td className="px-4 py-3">{formatMoney(variant.price)}</td>
-                  <td className="px-4 py-3">{variant.stock}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{variant.sku || '—'}</td>
-                  <td className="px-4 py-3">{variant.is_active ? 'Yes' : 'No'}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => handleDeleteVariant(variant.id)} className="text-red-500 hover:underline">Delete</button>
-                  </td>
-                </tr>
-              ))}
-              {variants.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No variants yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OptionGroupManager({ productId, onRefreshProduct }: { productId: string; onRefreshProduct: () => Promise<void> }) {
-  const [groups, setGroups] = useState<OptionGroup[]>([]);
-  const [showAddGroup, setShowAddGroup] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [groupType, setGroupType] = useState<InputType>('single');
-  const [groupRequired, setGroupRequired] = useState(false);
-  const [choiceForms, setChoiceForms] = useState<Record<string, { label: string; price_add_on: string; is_default: boolean }>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function loadGroups() {
-    const nextGroups = await adminGetOptionGroups(productId);
-    setGroups(sortByPosition(nextGroups).map(group => ({ ...group, choices: sortByPosition(group.choices) })));
-  }
-
-  useEffect(() => {
-    loadGroups().catch(() => setError('Failed to load option groups.'));
-  }, [productId]);
-
-  async function handleAddGroup(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      await adminCreateOptionGroup(productId, {
-        name: groupName,
-        input_type: groupType,
-        required: groupRequired,
-      });
-      setGroupName('');
-      setGroupType('single');
-      setGroupRequired(false);
-      setShowAddGroup(false);
-      await Promise.all([loadGroups(), onRefreshProduct()]);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create option group');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDeleteGroup(groupId: string) {
-    if (!confirm('Delete this option group?')) return;
-    try {
-      await adminDeleteOptionGroup(productId, groupId);
-      await Promise.all([loadGroups(), onRefreshProduct()]);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Delete failed');
-    }
-  }
-
-  async function handleAddChoice(groupId: string) {
-    const form = choiceForms[groupId];
-    if (!form?.label) return;
-    try {
-      await adminAddOptionChoice(productId, groupId, {
-        label: form.label,
-        price_add_on: form.price_add_on || '0',
-        is_default: form.is_default,
-      });
-      setChoiceForms(prev => ({ ...prev, [groupId]: { label: '', price_add_on: '0', is_default: false } }));
-      await Promise.all([loadGroups(), onRefreshProduct()]);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to add choice');
-    }
-  }
-
-  async function handleDeleteChoice(groupId: string, choiceId: string) {
-    if (!confirm('Delete this choice?')) return;
-    try {
-      await adminDeleteOptionChoice(productId, groupId, choiceId);
-      await Promise.all([loadGroups(), onRefreshProduct()]);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Delete failed');
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-xl shadow p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-semibold text-gray-800">Option Group Manager</h2>
-          <p className="text-sm text-gray-500 mt-1">Create configurable add-ons and custom inputs.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowAddGroup(prev => !prev)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
-        >
-          {showAddGroup ? 'Cancel' : 'Add Group'}
-        </button>
-      </div>
-
-      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-
-      {showAddGroup && (
-        <form onSubmit={handleAddGroup} className="border border-gray-200 rounded-xl p-4 bg-gray-50 grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
-            <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} required className="w-full border rounded-lg px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Input Type</label>
-            <select value={groupType} onChange={e => setGroupType(e.target.value as InputType)} className="w-full border rounded-lg px-3 py-2">
-              <option value="single">Single choice</option>
-              <option value="multi">Multiple choice</option>
-              <option value="text">Text</option>
-            </select>
-          </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700 md:col-span-2">
-            <input type="checkbox" checked={groupRequired} onChange={e => setGroupRequired(e.target.checked)} />
-            Required
-          </label>
-          <div className="md:col-span-2">
-            <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:bg-gray-300">
-              {submitting ? 'Saving...' : 'Create Group'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      <div className="space-y-4">
-        {groups.map(group => {
-          const form = choiceForms[group.id] ?? { label: '', price_add_on: '0', is_default: false };
-          return (
-            <div key={group.id} className="border border-gray-200 rounded-xl p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-medium text-gray-800">{group.name}</h3>
-                  <p className="text-sm text-gray-500 capitalize">{group.input_type} · {group.required ? 'Required' : 'Optional'}</p>
-                </div>
-                <button onClick={() => handleDeleteGroup(group.id)} className="text-red-500 text-sm hover:underline">Delete Group</button>
-              </div>
-
-              {group.input_type === 'text' ? (
-                <p className="text-sm text-gray-500 mt-3">Customers enter free-form text for this option.</p>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {group.choices.map(choice => (
-                      <span key={choice.id} className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
-                        {choice.label} ({parseFloat(choice.price_add_on) > 0 ? `+${formatMoney(choice.price_add_on)}` : 'Included'})
-                        {choice.is_default && <span className="text-xs text-blue-600">Default</span>}
-                        <button onClick={() => handleDeleteChoice(group.id, choice.id)} className="text-red-500 hover:text-red-700">×</button>
-                      </span>
-                    ))}
-                    {group.choices.length === 0 && <p className="text-sm text-gray-400">No choices yet.</p>}
-                  </div>
-
-                  <div className="grid md:grid-cols-[2fr_1fr_auto] gap-3 items-end">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Choice label</label>
-                      <input
-                        type="text"
-                        value={form.label}
-                        onChange={e => setChoiceForms(prev => ({ ...prev, [group.id]: { ...form, label: e.target.value } }))}
-                        className="w-full border rounded-lg px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Price add-on</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={form.price_add_on}
-                        onChange={e => setChoiceForms(prev => ({ ...prev, [group.id]: { ...form, price_add_on: e.target.value } }))}
-                        className="w-full border rounded-lg px-3 py-2"
-                      />
-                    </div>
-                    <button type="button" onClick={() => handleAddChoice(group.id)} className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800">
-                      Add Choice
-                    </button>
-                  </div>
-                  {group.input_type === 'single' && (
-                    <label className="flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={form.is_default}
-                        onChange={e => setChoiceForms(prev => ({ ...prev, [group.id]: { ...form, is_default: e.target.checked } }))}
-                      />
-                      Default selection
-                    </label>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {groups.length === 0 && <p className="text-sm text-gray-400">No option groups yet.</p>}
-      </div>
-    </div>
-  );
-}
-
 export default function EditProductPage() {
   const { id } = useParams<{ id: string }>();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -672,6 +224,8 @@ export default function EditProductPage() {
   const [stockMsg, setStockMsg] = useState('');
   const [saved, setSaved] = useState(false);
   const [previewImages, setPreviewImages] = useState<ProductImage[]>([]);
+  const [switchingType, setSwitchingType] = useState(false);
+  const [typeError, setTypeError] = useState<string | null>(null);
 
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
 
@@ -724,6 +278,24 @@ export default function EditProductPage() {
     }
   }
 
+  async function handleProductTypeChange(nextType: ProductType) {
+    const previousType = productType;
+    setProductType(nextType);
+    if (!product || nextType === product.product_type) return;
+
+    setTypeError(null);
+    setSwitchingType(true);
+    try {
+      const updated = await adminUpdateProduct(id, { product_type: nextType });
+      setProduct(updated);
+    } catch (err: unknown) {
+      setProductType(previousType);
+      setTypeError(err instanceof Error ? err.message : 'Failed to switch product type');
+    } finally {
+      setSwitchingType(false);
+    }
+  }
+
   async function handleStockAdjust(e: React.FormEvent) {
     e.preventDefault();
     try {
@@ -767,11 +339,18 @@ export default function EditProductPage() {
                 ) : (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Type</label>
-                    <select value={productType} onChange={e => setProductType(e.target.value as ProductType)} className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select
+                      value={productType}
+                      onChange={e => handleProductTypeChange(e.target.value as ProductType)}
+                      disabled={switchingType}
+                      className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    >
                       <option value="simple">Simple</option>
                       <option value="variable">Variable</option>
                       <option value="configurable">Configurable</option>
                     </select>
+                    {switchingType && <p className="text-xs text-gray-500 mt-1">Switching product type…</p>}
+                    {typeError && <p className="text-xs text-red-600 mt-1">{typeError}</p>}
                   </div>
                 )}
                 <div>

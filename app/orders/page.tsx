@@ -92,9 +92,9 @@ export default function MyOrdersPage() {
               ))}
             </div>
 
-            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-              <div className="text-xs text-gray-400 space-y-0.5">
-                {order.shipping_address && <p>📦 {order.shipping_address}</p>}
+            <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-xs text-gray-400 space-y-0.5 min-w-0">
+                {order.shipping_address && <p className="break-words">📦 {order.shipping_address}</p>}
                 <p>{new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
               <p className="font-bold text-gray-800 text-lg">${parseFloat(order.total_amount).toFixed(2)}</p>

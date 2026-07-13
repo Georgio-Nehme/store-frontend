@@ -46,44 +46,48 @@ export default function CartPage() {
             .toUpperCase();
 
           return (
-            <div key={itemKey} className="bg-white rounded-xl shadow p-4 flex items-center gap-4">
-              <div className="bg-gray-200 w-16 h-16 rounded-lg flex items-center justify-center shrink-0">
-                <span className="font-bold text-gray-400">{initials}</span>
+            <div key={itemKey} className="bg-white rounded-xl shadow p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div className="bg-gray-200 w-16 h-16 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="font-bold text-gray-400">{initials}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-800">{item.product_name || 'Product'}</p>
+                  {item.variant_label && <p className="text-xs text-gray-500 mt-1">Variant: {item.variant_label}</p>}
+                  {summary.length > 0 && (
+                    <div className="mt-1 space-y-1">
+                      {summary.map(line => (
+                        <p key={line} className="text-xs text-gray-500">{line}</p>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-blue-600 font-medium mt-1">${parseFloat(item.unit_price).toFixed(2)} × {item.quantity}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800">{item.product_name || 'Product'}</p>
-                {item.variant_label && <p className="text-xs text-gray-500 mt-1">Variant: {item.variant_label}</p>}
-                {summary.length > 0 && (
-                  <div className="mt-1 space-y-1">
-                    {summary.map(line => (
-                      <p key={line} className="text-xs text-gray-500">{line}</p>
-                    ))}
-                  </div>
-                )}
-                <p className="text-blue-600 font-medium mt-1">${parseFloat(item.unit_price).toFixed(2)} × {item.quantity}</p>
-              </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-4 sm:justify-end">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => updateQuantity(item.product_id, item.quantity - 1, item.variant_id, item.configuration)}
+                    className="w-7 h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
+                  >
+                    −
+                  </button>
+                  <span className="w-8 text-center">{item.quantity}</span>
+                  <button
+                    onClick={() => updateQuantity(item.product_id, item.quantity + 1, item.variant_id, item.configuration)}
+                    className="w-7 h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="w-20 text-right font-semibold">${(parseFloat(item.unit_price) * item.quantity).toFixed(2)}</p>
                 <button
-                  onClick={() => updateQuantity(item.product_id, item.quantity - 1, item.variant_id, item.configuration)}
-                  className="w-7 h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
+                  onClick={() => removeItem(item.product_id, item.variant_id, item.configuration)}
+                  className="text-red-500 hover:text-red-700 text-sm"
                 >
-                  −
-                </button>
-                <span className="w-8 text-center">{item.quantity}</span>
-                <button
-                  onClick={() => updateQuantity(item.product_id, item.quantity + 1, item.variant_id, item.configuration)}
-                  className="w-7 h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
-                >
-                  +
+                  Remove
                 </button>
               </div>
-              <p className="w-20 text-right font-semibold">${(parseFloat(item.unit_price) * item.quantity).toFixed(2)}</p>
-              <button
-                onClick={() => removeItem(item.product_id, item.variant_id, item.configuration)}
-                className="text-red-500 hover:text-red-700 text-sm ml-2"
-              >
-                Remove
-              </button>
             </div>
           );
         })}

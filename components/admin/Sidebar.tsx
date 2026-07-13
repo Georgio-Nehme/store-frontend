@@ -16,7 +16,7 @@ const links = [
   { href: '/admin/account/password', label: 'Change Password' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -26,32 +26,46 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-56 min-h-screen bg-gray-900 text-white flex flex-col py-8 px-4 shrink-0">
-      <h2 className="text-lg font-bold mb-8 text-white">Admin Panel</h2>
-      <nav className="flex flex-col gap-2 flex-1">
-        {links.map(link => {
-          const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-              }`}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-      </nav>
-      <button
-        onClick={handleLogout}
-        className="mt-4 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 text-left transition-colors"
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-56 min-h-screen bg-gray-900 text-white flex flex-col py-8 px-4 shrink-0 transform transition-transform duration-200 ease-in-out overflow-y-auto ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0 lg:static`}
       >
-        Logout
-      </button>
-    </aside>
+        <h2 className="text-lg font-bold mb-8 text-white">Admin Panel</h2>
+        <nav className="flex flex-col gap-2 flex-1">
+          {links.map(link => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={onClose}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <button
+          onClick={handleLogout}
+          className="mt-4 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 text-left transition-colors"
+        >
+          Logout
+        </button>
+      </aside>
+    </>
   );
 }
