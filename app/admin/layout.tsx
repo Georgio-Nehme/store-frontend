@@ -39,9 +39,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="print:hidden contents">
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </div>
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="lg:hidden flex items-center gap-3 bg-gray-900 text-white px-4 py-3 sticky top-0 z-20">
+        <div className="lg:hidden print:hidden flex items-center gap-3 bg-gray-900 text-white px-4 py-3 sticky top-0 z-20">
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="Open menu"
@@ -53,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
           <span className="font-semibold">Admin Panel</span>
         </div>
-        <main className="flex-1 bg-gray-100 p-4 md:p-8 overflow-auto">{children}</main>
+        <main className="flex-1 bg-gray-100 p-4 md:p-8 overflow-auto print:p-0 print:bg-white">{children}</main>
       </div>
     </div>
   );

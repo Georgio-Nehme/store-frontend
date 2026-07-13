@@ -181,7 +181,7 @@ export async function getPublicStoreSettings(): Promise<StoreSettings> {
   const res = await fetch(`${API_URL}/settings`, {
     headers: { 'X-Store-ID': STORE_ID },
   });
-  if (!res.ok) return { delivery_fee: '0', allow_guest_orders: false };
+  if (!res.ok) return { delivery_fee: '0', allow_guest_orders: false, sender_email: null, sender_email_verified: false };
   return res.json();
 }
 
@@ -574,6 +574,10 @@ export function adminGetOrders(): Promise<Order[]> {
   return apiFetch<Order[]>('/admin/orders');
 }
 
+export function adminGetOrder(orderId: string): Promise<Order> {
+  return apiFetch<Order>(`/admin/orders/${orderId}`);
+}
+
 export function adminUpdateOrderStatus(orderId: string, status: Order['status']): Promise<Order> {
   return apiFetch<Order>(`/admin/orders/${orderId}/status`, {
     method: 'PATCH',
@@ -618,10 +622,17 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 export async function updateStoreSettings(data: {
   delivery_fee?: number;
   allow_guest_orders?: boolean;
+  sender_email?: string;
 }): Promise<StoreSettings> {
   return apiFetch<StoreSettings>('/admin/settings', {
     method: 'PATCH',
     body: JSON.stringify(data),
+  });
+}
+
+export async function adminResendSenderVerification(): Promise<StoreSettings> {
+  return apiFetch<StoreSettings>('/admin/settings/sender-email/resend', {
+    method: 'POST',
   });
 }
 

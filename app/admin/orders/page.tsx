@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { adminGetOrders, adminGetCustomers, adminUpdateOrderStatus } from '@/lib/api';
 import { Order, Customer } from '@/lib/types';
 import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
@@ -40,12 +41,12 @@ export default function AdminOrdersPage() {
       if (col === 'total') return parseFloat(o.total_amount);
       if (col === 'status') return o.status;
       if (col === 'date') return new Date(o.created_at).getTime();
-      const c = customers.get(o.customer_id);
-      return (c?.name || c?.email || '').toLowerCase();
+      const c = o.customer_id ? customers.get(o.customer_id) : undefined;
+      return (c?.name || c?.email || o.guest_info?.name || '').toLowerCase();
     },
     (o, q) => {
-      const c = customers.get(o.customer_id);
-      return [o.id, o.status, o.shipping_address || '', c?.name || '', c?.email || ''].some(v => v.toLowerCase().includes(q));
+      const c = o.customer_id ? customers.get(o.customer_id) : undefined;
+      return [o.id, o.status, o.shipping_address || '', c?.name || '', c?.email || '', o.guest_info?.name || ''].some(v => v.toLowerCase().includes(q));
     },
   );
 
@@ -94,15 +95,24 @@ export default function AdminOrdersPage() {
             </thead>
             <tbody>
               {sorted.map(o => {
-                const customer = customers.get(o.customer_id);
+                const customer = o.customer_id ? customers.get(o.customer_id) : undefined;
                 return (
                   <tr key={o.id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{o.id.slice(0, 8)}…</td>
+                    <td className="px-4 py-3 font-mono text-xs">
+                      <Link href={`/admin/orders/${o.id}`} className="text-blue-600 hover:underline">
+                        {o.id.slice(0, 8)}…
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">
                       {customer ? (
                         <div>
                           <p className="font-medium text-gray-800">{customer.name || customer.email}</p>
                           {customer.name && <p className="text-xs text-gray-400">{customer.email}</p>}
+                        </div>
+                      ) : o.guest_info ? (
+                        <div>
+                          <p className="font-medium text-gray-800">{o.guest_info.name}</p>
+                          <p className="text-xs text-gray-400">Guest</p>
                         </div>
                       ) : <span className="text-gray-400 text-xs font-mono">{o.customer_id ? `${o.customer_id.slice(0, 8)}…` : 'Guest'}</span>}
                     </td>

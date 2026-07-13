@@ -246,10 +246,17 @@ export interface OrderItem {
 
 export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
+export interface OrderGuestInfo {
+  name: string;
+  phone: string;
+  email: string | null;
+  shipping_address: string | null;
+}
+
 export interface Order {
   id: string;
   store_id: string;
-  customer_id: string;
+  customer_id: string | null;
   status: OrderStatus;
   total_amount: string;
   discount_amount: string;
@@ -257,6 +264,7 @@ export interface Order {
   promo_code_used: string | null;
   shipping_address: string | null;
   notes: string | null;
+  guest_info: OrderGuestInfo | null;
   items: OrderItem[];
   created_at: string;
   updated_at: string | null;
@@ -265,6 +273,8 @@ export interface Order {
 export interface StoreSettings {
   delivery_fee: string;
   allow_guest_orders: boolean;
+  sender_email: string | null;
+  sender_email_verified: boolean;
 }
 
 export interface PromoCode {

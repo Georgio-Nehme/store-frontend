@@ -1,21 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getStoreSettings, updateStoreSettings } from '@/lib/api';
+import { adminResendSenderVerification, getStoreSettings, updateStoreSettings } from '@/lib/api';
 
 export default function SettingsPage() {
   const [deliveryFee, setDeliveryFee] = useState('');
   const [allowGuestOrders, setAllowGuestOrders] = useState(false);
+  const [senderEmail, setSenderEmail] = useState('');
+  const [senderEmailVerified, setSenderEmailVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     getStoreSettings()
       .then(s => {
         setDeliveryFee(s.delivery_fee);
         setAllowGuestOrders(s.allow_guest_orders);
+        setSenderEmail(s.sender_email || '');
+        setSenderEmailVerified(s.sender_email_verified);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -27,15 +33,30 @@ export default function SettingsPage() {
     setSuccess(false);
     setError(null);
     try {
-      await updateStoreSettings({
+      const updated = await updateStoreSettings({
         delivery_fee: parseFloat(deliveryFee) || 0,
         allow_guest_orders: allowGuestOrders,
+        sender_email: senderEmail || undefined,
       });
+      setSenderEmailVerified(updated.sender_email_verified);
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleResend() {
+    setResending(true);
+    setResendMsg(null);
+    try {
+      await adminResendSenderVerification();
+      setResendMsg('Verification email sent — check that inbox.');
+    } catch (err: unknown) {
+      setResendMsg(err instanceof Error ? err.message : 'Failed to resend');
+    } finally {
+      setResending(false);
     }
   }
 
@@ -81,6 +102,47 @@ export default function SettingsPage() {
                   />
                 </button>
               </label>
+            </div>
+
+            <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Order Email Sender</label>
+                <input
+                  type="email"
+                  value={senderEmail}
+                  onChange={e => setSenderEmail(e.target.value)}
+                  placeholder="orders@yourstore.com"
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Customers get an email from this address when their order status changes.
+                </p>
+              </div>
+
+              {senderEmail && (
+                <div className="flex items-center justify-between gap-3">
+                  {senderEmailVerified ? (
+                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-800">
+                      ✓ Verified
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                      ⏳ Pending — check that inbox for a confirmation link
+                    </span>
+                  )}
+                  {!senderEmailVerified && (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resending}
+                      className="text-xs text-blue-600 hover:underline disabled:text-gray-400"
+                    >
+                      {resending ? 'Resending...' : 'Resend verification email'}
+                    </button>
+                  )}
+                </div>
+              )}
+              {resendMsg && <p className="text-xs text-gray-500">{resendMsg}</p>}
             </div>
 
             <button
