@@ -7,6 +7,7 @@ on:
 
 env:
   AWS_REGION: eu-central-1
+  ECR_REPOSITORY: mystore-frontend
 
 permissions:
   contents: read
@@ -34,19 +35,11 @@ jobs:
       - name: Build, tag, and push (store frontend)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
           echo "Building store frontend..."
 
-          BUILD_ARGS=""
-          if [ -n "$VITE_API_BASE_URL" ]; then
-            BUILD_ARGS="--build-arg VITE_API_BASE_URL=$VITE_API_BASE_URL"
-            echo "Using build-arg VITE_API_BASE_URL"
-          fi
-
-          docker build $BUILD_ARGS -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
 
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
@@ -56,5 +49,5 @@ jobs:
           echo "Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
-# NOTE: Set repository secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, ECR_REPOSITORY
-# Optionally set repository variable VITE_API_BASE_URL for build-time API URL
+# NOTE: Set repository secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# Build-time NEXT_PUBLIC_* env vars are read from the committed .env file (see Next.js env loading).
