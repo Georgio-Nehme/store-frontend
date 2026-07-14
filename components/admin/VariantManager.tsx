@@ -9,6 +9,7 @@ import {
   adminGetProductImages,
   adminGetVariants,
   adminSetProductOptionTypes,
+  adminUpdateVariant,
   adminUploadImage,
 } from '@/lib/api';
 import { OptionType, ProductImage, Variant } from '@/lib/types';
@@ -45,6 +46,9 @@ export function VariantManager({
   const [submittingVariant, setSubmittingVariant] = useState(false);
   const [uploadingVariantId, setUploadingVariantId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ sku: '', price: '', comparePrice: '', stock: 0, isActive: true });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function loadData() {
     const [types, variantList, imageList] = await Promise.all([
@@ -110,6 +114,42 @@ export function VariantManager({
       setError(err instanceof Error ? err.message : 'Failed to create variant');
     } finally {
       setSubmittingVariant(false);
+    }
+  }
+
+  function handleStartEdit(variant: Variant) {
+    setEditingVariantId(variant.id);
+    setEditForm({
+      sku: variant.sku || '',
+      price: variant.price,
+      comparePrice: variant.compare_price || '',
+      stock: variant.stock,
+      isActive: variant.is_active,
+    });
+    setError(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingVariantId(null);
+  }
+
+  async function handleSaveEdit(variantId: string) {
+    setSavingEdit(true);
+    setError(null);
+    try {
+      await adminUpdateVariant(productId, variantId, {
+        sku: editForm.sku || null,
+        price: editForm.price,
+        compare_price: editForm.comparePrice || null,
+        stock: editForm.stock,
+        is_active: editForm.isActive,
+      });
+      setEditingVariantId(null);
+      await Promise.all([loadData(), onRefreshProduct()]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update variant');
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -266,6 +306,7 @@ export function VariantManager({
             <tbody>
               {variants.map(variant => {
                 const variantPhoto = images.find(img => img.variant_id === variant.id && img.status === 'ready');
+                const isEditing = editingVariantId === variant.id;
                 return (
                   <tr key={variant.id} className="border-t">
                     <td className="px-4 py-3">
@@ -299,13 +340,67 @@ export function VariantManager({
                       )}
                     </td>
                     <td className="px-4 py-3">{variant.option_values.map(value => `${value.option_type_name}: ${value.value}`).join(' / ')}</td>
-                    <td className="px-4 py-3">{formatMoney(variant.price)}</td>
-                    <td className="px-4 py-3">{variant.stock}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{variant.sku || '—'}</td>
-                    <td className="px-4 py-3">{variant.is_active ? 'Yes' : 'No'}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => handleDeleteVariant(variant.id)} className="text-red-500 hover:underline">Delete</button>
-                    </td>
+                    {isEditing ? (
+                      <>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editForm.price}
+                            onChange={e => setEditForm(prev => ({ ...prev, price: e.target.value }))}
+                            className="w-24 border rounded-lg px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            min="0"
+                            value={editForm.stock}
+                            onChange={e => setEditForm(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))}
+                            className="w-20 border rounded-lg px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={editForm.sku}
+                            onChange={e => setEditForm(prev => ({ ...prev, sku: e.target.value }))}
+                            className="w-28 border rounded-lg px-2 py-1 font-mono text-xs"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={editForm.isActive}
+                            onChange={e => setEditForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                          />
+                        </td>
+                        <td className="px-4 py-3 space-x-2 whitespace-nowrap">
+                          <button
+                            onClick={() => handleSaveEdit(variant.id)}
+                            disabled={savingEdit}
+                            className="text-blue-600 hover:underline disabled:text-gray-400"
+                          >
+                            {savingEdit ? 'Saving...' : 'Save'}
+                          </button>
+                          <button onClick={handleCancelEdit} disabled={savingEdit} className="text-gray-500 hover:underline">
+                            Cancel
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3">{formatMoney(variant.price)}</td>
+                        <td className="px-4 py-3">{variant.stock}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{variant.sku || '—'}</td>
+                        <td className="px-4 py-3">{variant.is_active ? 'Yes' : 'No'}</td>
+                        <td className="px-4 py-3 space-x-2 whitespace-nowrap">
+                          <button onClick={() => handleStartEdit(variant)} className="text-blue-600 hover:underline">Edit</button>
+                          <button onClick={() => handleDeleteVariant(variant.id)} className="text-red-500 hover:underline">Delete</button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 );
               })}
