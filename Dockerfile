@@ -7,6 +7,16 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# Store identity, inlined into the JS bundle by Next.js at build time.
+# Supplied per-fork as --build-arg values from GitHub repo Variables (see RUNBOOK.md)
+# — never hardcoded here or read from a committed .env file.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_STORE_ID
+ARG NEXT_PUBLIC_STORE_NAME
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_STORE_ID=$NEXT_PUBLIC_STORE_ID
+ENV NEXT_PUBLIC_STORE_NAME=$NEXT_PUBLIC_STORE_NAME
+
 # Build
 COPY . .
 RUN npm run build

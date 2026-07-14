@@ -6,6 +6,7 @@ import { useCart } from '@/lib/cart';
 import { clearCustomerSession, getCustomerSession } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { branding } from '@/store.config/branding';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -31,7 +32,7 @@ export default function Navbar() {
   }
 
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'My Store';
+  const storeName = branding.storeName;
 
   return (
     <nav className="bg-white shadow-md w-full">

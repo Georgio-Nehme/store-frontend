@@ -7,7 +7,6 @@ on:
 
 env:
   AWS_REGION: eu-central-1
-  ECR_REPOSITORY: mystore-frontend
 
 permissions:
   contents: read
@@ -35,11 +34,18 @@ jobs:
       - name: Build, tag, and push (store frontend)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
         run: |
           echo "Building store frontend..."
 
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          TEMPLATE_VERSION=$(node -p "require('./package.json').version")
+          IMAGE_TAG="${TEMPLATE_VERSION}-${GITHUB_SHA::7}"
+
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL }}" \
+            --build-arg NEXT_PUBLIC_STORE_ID="${{ vars.NEXT_PUBLIC_STORE_ID }}" \
+            --build-arg NEXT_PUBLIC_STORE_NAME="${{ vars.NEXT_PUBLIC_STORE_NAME }}" \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
 
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
@@ -49,5 +55,7 @@ jobs:
           echo "Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
-# NOTE: Set repository secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-# Build-time NEXT_PUBLIC_* env vars are read from the committed .env file (see Next.js env loading).
+# NOTE: Per-fork setup (see RUNBOOK.md) — Settings > Secrets and variables > Actions:
+#   Secrets:   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#   Variables: ECR_REPOSITORY, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_STORE_ID, NEXT_PUBLIC_STORE_NAME
+# No code differs between store forks for deployment — only these repo Variables/Secrets.
