@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useRef, useEffect, useState } from 'react';
-import { Category, OptionGroup, OptionType, Product, ProductImage, ProductType, Variant } from '@/lib/types';
+import { Category, OptionGroup, OptionType, Product, ProductImage, ProductTag, ProductType, StoreSettings, Variant } from '@/lib/types';
+import ProductTags from '@/components/ProductTags';
 
 function isHexColor(val: string | null | undefined): boolean {
   return !!val && /^#[0-9A-Fa-f]{3,8}$/.test(val.trim());
@@ -27,6 +28,11 @@ interface Props {
   images: ProductImage[];
   categories: Category[];
   categoryId: string;
+  moq: number;
+  isBestSeller: boolean;
+  isLimitedTime: boolean;
+  limitedTimeEndsAt: string;
+  storeSettings: StoreSettings | null;
 }
 
 export function ProductPreviewPanel({
@@ -40,6 +46,11 @@ export function ProductPreviewPanel({
   images,
   categories,
   categoryId,
+  moq,
+  isBestSeller,
+  isLimitedTime,
+  limitedTimeEndsAt,
+  storeSettings,
 }: Props) {
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [groupSelections, setGroupSelections] = useState<Record<string, { ids: string[]; text: string }>>({});
@@ -113,6 +124,24 @@ export function ProductPreviewPanel({
     ? (selectedVariant ? `${selectedVariant.stock} in stock` : 'Select options to see availability')
     : (product?.in_stock ? `${product.stock} in stock` : 'Out of stock');
 
+  const previewTags = useMemo<ProductTag[]>(() => {
+    const tags: ProductTag[] = [];
+    if (!storeSettings) return tags;
+    if (isBestSeller && storeSettings.tag_best_seller_enabled) tags.push('best_seller');
+    if (
+      isLimitedTime &&
+      storeSettings.tag_limited_time_enabled &&
+      (!limitedTimeEndsAt || new Date(limitedTimeEndsAt) > new Date())
+    ) {
+      tags.push('limited_time');
+    }
+    if (storeSettings.tag_low_stock_enabled && inStock) {
+      const stockForTag = productType === 'variable' ? (selectedVariant?.stock ?? 0) : (product?.stock ?? 0);
+      if (stockForTag <= storeSettings.low_stock_threshold) tags.push('low_stock');
+    }
+    return tags;
+  }, [storeSettings, isBestSeller, isLimitedTime, limitedTimeEndsAt, inStock, productType, selectedVariant, product]);
+
   return (
     <div className="bg-white rounded-xl shadow p-5 sticky top-6">
       <div className="flex items-center justify-between mb-4">
@@ -161,6 +190,8 @@ export function ProductPreviewPanel({
             {category.name}
           </span>
         )}
+
+        <ProductTags tags={previewTags} />
 
         {/* Name */}
         <h3 className="font-bold text-gray-800 text-lg leading-tight">
@@ -288,6 +319,7 @@ export function ProductPreviewPanel({
         <p className={`text-xs font-medium ${inStock || (productType === 'variable' && !selectedVariant) ? 'text-green-600' : 'text-red-500'}`}>
           {stockLabel}
         </p>
+        {moq > 1 && <p className="text-xs text-gray-500">Min. order: {moq}</p>}
 
         {/* Add to cart (visual only) */}
         <button

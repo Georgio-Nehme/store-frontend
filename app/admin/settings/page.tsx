@@ -8,6 +8,10 @@ export default function SettingsPage() {
   const [allowGuestOrders, setAllowGuestOrders] = useState(false);
   const [senderEmail, setSenderEmail] = useState('');
   const [senderEmailVerified, setSenderEmailVerified] = useState(false);
+  const [lowStockThreshold, setLowStockThreshold] = useState(5);
+  const [tagBestSellerEnabled, setTagBestSellerEnabled] = useState(true);
+  const [tagLowStockEnabled, setTagLowStockEnabled] = useState(true);
+  const [tagLimitedTimeEnabled, setTagLimitedTimeEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -22,6 +26,10 @@ export default function SettingsPage() {
         setAllowGuestOrders(s.allow_guest_orders);
         setSenderEmail(s.sender_email || '');
         setSenderEmailVerified(s.sender_email_verified);
+        setLowStockThreshold(s.low_stock_threshold);
+        setTagBestSellerEnabled(s.tag_best_seller_enabled);
+        setTagLowStockEnabled(s.tag_low_stock_enabled);
+        setTagLimitedTimeEnabled(s.tag_limited_time_enabled);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -37,6 +45,10 @@ export default function SettingsPage() {
         delivery_fee: parseFloat(deliveryFee) || 0,
         allow_guest_orders: allowGuestOrders,
         sender_email: senderEmail || undefined,
+        low_stock_threshold: lowStockThreshold,
+        tag_best_seller_enabled: tagBestSellerEnabled,
+        tag_low_stock_enabled: tagLowStockEnabled,
+        tag_limited_time_enabled: tagLimitedTimeEnabled,
       });
       setSenderEmailVerified(updated.sender_email_verified);
       setSuccess(true);
@@ -102,6 +114,48 @@ export default function SettingsPage() {
                   />
                 </button>
               </label>
+            </div>
+
+            <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+              <p className="text-sm font-medium text-gray-700">Product Tags</p>
+              <p className="text-xs text-gray-500 -mt-2">
+                Choose which merchandising badges show on product cards store-wide.
+              </p>
+              {[
+                { label: 'Best Seller', checked: tagBestSellerEnabled, onChange: setTagBestSellerEnabled },
+                { label: 'Low in Stock', checked: tagLowStockEnabled, onChange: setTagLowStockEnabled },
+                { label: 'Limited Time Only', checked: tagLimitedTimeEnabled, onChange: setTagLimitedTimeEnabled },
+              ].map(({ label, checked, onChange }) => (
+                <label key={label} className="flex items-center justify-between gap-4 cursor-pointer">
+                  <span className="text-sm text-gray-700">{label}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={checked}
+                    onClick={() => onChange(v => !v)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${checked ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`}
+                    />
+                  </button>
+                </label>
+              ))}
+              {tagLowStockEnabled && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={lowStockThreshold}
+                    onChange={e => setLowStockThreshold(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Products show the &quot;Low in Stock&quot; badge when stock is at or below this number.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="border rounded-lg p-4 bg-gray-50 space-y-3">

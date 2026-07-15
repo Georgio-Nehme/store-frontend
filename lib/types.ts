@@ -108,6 +108,8 @@ export interface CategoryBrief {
   slug: string;
 }
 
+export type ProductTag = 'best_seller' | 'low_stock' | 'limited_time';
+
 export interface Product {
   id: string;
   store_id: string;
@@ -123,6 +125,13 @@ export interface Product {
   is_active: boolean;
   in_stock: boolean;
   can_change_type: boolean;
+  moq: number;
+  is_best_seller: boolean;
+  is_limited_time: boolean;
+  limited_time_ends_at: string | null;
+  tags: ProductTag[];
+  avg_rating: number | null;
+  review_count: number;
   option_types: OptionType[] | null;
   variants: Variant[] | null;
   option_groups: OptionGroup[] | null;
@@ -275,6 +284,29 @@ export interface StoreSettings {
   allow_guest_orders: boolean;
   sender_email: string | null;
   sender_email_verified: boolean;
+  low_stock_threshold: number;
+  tag_best_seller_enabled: boolean;
+  tag_low_stock_enabled: boolean;
+  tag_limited_time_enabled: boolean;
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+export interface Review {
+  id: string;
+  store_id: string;
+  product_id: string | null;
+  customer_id: string;
+  customer_name: string | null;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  is_hidden: boolean;
+  created_at: string;
+}
+
+export interface ReviewSummary {
+  average_rating: number | null;
+  review_count: number;
 }
 
 export interface PromoCode {

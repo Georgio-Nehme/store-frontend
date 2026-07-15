@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { Product, ProductImage } from '@/lib/types';
 import { useCart } from '@/lib/cart';
+import StarRating from '@/components/StarRating';
+import ProductTags from '@/components/ProductTags';
 
 interface Props {
   product: Product;
@@ -51,9 +53,20 @@ export default function ProductCard({ product, primaryImage }: Props) {
             {product.category.name}
           </span>
         )}
+        {product.tags.length > 0 && (
+          <div className="mb-2">
+            <ProductTags tags={product.tags} />
+          </div>
+        )}
         <Link href={`/products/${product.id}`}>
           <h3 className="font-semibold text-gray-800 hover:text-blue-600 mb-1">{product.name}</h3>
         </Link>
+        {product.review_count > 0 && (
+          <div className="flex items-center gap-1.5 mb-1">
+            <StarRating rating={product.avg_rating ?? 0} />
+            <span className="text-xs text-gray-500">({product.review_count})</span>
+          </div>
+        )}
         <div className="mb-1">
           <span className="text-blue-600 font-bold text-lg">
             {product.product_type === 'variable' ? `From ${formatPrice(product.price)}` : formatPrice(product.price)}
@@ -70,11 +83,11 @@ export default function ProductCard({ product, primaryImage }: Props) {
 
         {product.product_type === 'simple' ? (
           <button
-            onClick={() => addItem({ product_id: product.id, product_name: product.name, unit_price: product.price }, 1)}
+            onClick={() => addItem({ product_id: product.id, product_name: product.name, unit_price: product.price }, product.moq)}
             disabled={!product.in_stock}
             className="mt-auto bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
           >
-            Add to Cart
+            {product.moq > 1 ? `Add ${product.moq} to Cart` : 'Add to Cart'}
           </button>
         ) : (
           <Link

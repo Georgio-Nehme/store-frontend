@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { getProduct, getProductImages } from '@/lib/api';
 import { CartConfigurationEntry, OptionChoice, OptionGroup, Product, ProductImage, Variant } from '@/lib/types';
 import { useCart } from '@/lib/cart';
+import StarRating from '@/components/StarRating';
+import ProductTags from '@/components/ProductTags';
+import ReviewsSection from '@/components/ReviewsSection';
 
 function formatMoney(value: string | number) {
   const amount = typeof value === 'number' ? value : parseFloat(value || '0');
@@ -38,7 +41,7 @@ export default function ProductPage() {
     Promise.all([getProduct(id), getProductImages(id)])
       .then(([p, imgs]) => {
         setProduct(p);
-        setQty(1);
+        setQty(p.moq || 1);
         setSelectedValues({});
 
         const initialSelections: Record<string, { selectedChoiceIds: string[]; textValue: string }> = {};
@@ -119,14 +122,14 @@ export default function ProductPage() {
 
     if (product.product_type === 'variable') {
       if (!selectedVariant) {
-        setQty(1);
+        setQty(product.moq || 1);
         return;
       }
-      setQty(current => Math.min(Math.max(current, 1), Math.max(selectedVariant.stock, 1)));
+      setQty(current => Math.min(Math.max(current, product.moq), Math.max(selectedVariant.stock, product.moq)));
       return;
     }
 
-    setQty(current => Math.min(Math.max(current, 1), Math.max(product.stock, 1)));
+    setQty(current => Math.min(Math.max(current, product.moq), Math.max(product.stock, product.moq)));
   }, [product, selectedVariant]);
 
   function handleAdded() {
@@ -201,11 +204,12 @@ export default function ProductPage() {
       ? liveConfigPrice
       : product.price;
   const displayedStock = product.product_type === 'variable' ? selectedVariant?.stock ?? 0 : product.stock;
-  const addDisabled = product.product_type === 'variable'
+  const belowMoq = product.product_type !== 'configurable' && displayedStock > 0 && displayedStock < product.moq;
+  const addDisabled = (product.product_type === 'variable'
     ? !selectedVariant || !optionTypes.every(type => selectedValues[type.id]) || selectedVariant.stock <= 0
     : product.product_type === 'configurable'
       ? !product.in_stock || configHasMissingRequired
-      : !product.in_stock;
+      : !product.in_stock) || belowMoq;
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
@@ -253,7 +257,16 @@ export default function ProductPage() {
               {product.category.name}
             </span>
           )}
+          <ProductTags tags={product.tags} />
           <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
+          {product.review_count > 0 && (
+            <div className="flex items-center gap-2">
+              <StarRating rating={product.avg_rating ?? 0} size="md" />
+              <span className="text-sm text-gray-500">
+                {product.avg_rating?.toFixed(1)} ({product.review_count} review{product.review_count === 1 ? '' : 's'})
+              </span>
+            </div>
+          )}
           {product.sku && product.product_type !== 'variable' && <p className="text-sm text-gray-500">SKU: {product.sku}</p>}
           <div className="flex items-baseline gap-3">
             <p className="text-3xl font-bold text-blue-600">{formatMoney(displayedPrice)}</p>
@@ -385,13 +398,19 @@ export default function ProductPage() {
               <label className="text-sm text-gray-600">Quantity:</label>
               <input
                 type="number"
-                min={1}
-                max={Math.max(displayedStock, 1)}
+                min={product.moq}
+                max={Math.max(displayedStock, product.moq)}
                 value={qty}
-                onChange={e => setQty(Math.min(Math.max(1, parseInt(e.target.value) || 1), Math.max(displayedStock, 1)))}
+                onChange={e => setQty(Math.min(Math.max(product.moq, parseInt(e.target.value) || product.moq), Math.max(displayedStock, product.moq)))}
                 className="border rounded-lg px-3 py-1 w-20 text-center"
               />
+              {product.moq > 1 && <span className="text-xs text-gray-500">Min. order: {product.moq}</span>}
             </div>
+          )}
+          {belowMoq && (
+            <p className="text-sm text-red-500">
+              Only {displayedStock} left in stock — below the minimum order quantity of {product.moq}.
+            </p>
           )}
 
           {product.product_type === 'variable' && selectedVariant && selectedVariant.sku && (
@@ -406,6 +425,10 @@ export default function ProductPage() {
             {added ? '✓ Added!' : 'Add to Cart'}
           </button>
         </div>
+      </div>
+
+      <div className="mt-12 border-t border-gray-200 pt-8">
+        <ReviewsSection productId={product.id} title="Product Reviews" />
       </div>
     </main>
   );

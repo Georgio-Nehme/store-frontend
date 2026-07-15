@@ -43,6 +43,7 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center gap-6">
           <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+          <Link href="/reviews" className="text-gray-600 hover:text-gray-900">Reviews</Link>
           <Link href="/cart" className="relative text-gray-600 hover:text-gray-900">
             Cart
             {itemCount > 0 && (
@@ -87,6 +88,7 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden border-t border-gray-100 px-4 py-3 flex flex-col gap-3">
           <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+          <Link href="/reviews" className="text-gray-600 hover:text-gray-900">Reviews</Link>
           <Link href="/cart" className="text-gray-600 hover:text-gray-900">
             Cart{itemCount > 0 ? ` (${itemCount})` : ''}
           </Link>

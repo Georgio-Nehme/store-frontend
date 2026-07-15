@@ -12,6 +12,7 @@ const links = [
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/customers', label: 'Customers' },
   { href: '/admin/promo-codes', label: 'Promo Codes' },
+  { href: '/admin/reviews', label: 'Reviews' },
   { href: '/admin/settings', label: 'Settings' },
   { href: '/admin/account/password', label: 'Change Password' },
 ];

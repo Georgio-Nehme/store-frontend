@@ -20,6 +20,8 @@ import {
   ProductType,
   PromoCode,
   PromoCodeValidateResponse,
+  Review,
+  ReviewSummary,
   StoreSettings,
   Variant,
 } from './types';
@@ -181,7 +183,16 @@ export async function getPublicStoreSettings(): Promise<StoreSettings> {
   const res = await fetch(`${API_URL}/settings`, {
     headers: { 'X-Store-ID': STORE_ID },
   });
-  if (!res.ok) return { delivery_fee: '0', allow_guest_orders: false, sender_email: null, sender_email_verified: false };
+  if (!res.ok) return {
+    delivery_fee: '0',
+    allow_guest_orders: false,
+    sender_email: null,
+    sender_email_verified: false,
+    low_stock_threshold: 5,
+    tag_best_seller_enabled: true,
+    tag_low_stock_enabled: true,
+    tag_limited_time_enabled: true,
+  };
   return res.json();
 }
 
@@ -340,6 +351,10 @@ export function adminCreateProduct(data: {
   is_active: boolean;
   product_type?: ProductType;
   category_id?: string | null;
+  moq?: number;
+  is_best_seller?: boolean;
+  is_limited_time?: boolean;
+  limited_time_ends_at?: string | null;
 }): Promise<Product> {
   return apiFetch<Product>('/admin/products', {
     method: 'POST',
@@ -357,6 +372,10 @@ export function adminUpdateProduct(id: string, data: {
   is_active?: boolean;
   product_type?: ProductType;
   category_id?: string | null;
+  moq?: number;
+  is_best_seller?: boolean;
+  is_limited_time?: boolean;
+  limited_time_ends_at?: string | null;
 }): Promise<Product> {
   return apiFetch<Product>(`/admin/products/${id}`, {
     method: 'PUT',
@@ -623,6 +642,10 @@ export async function updateStoreSettings(data: {
   delivery_fee?: number;
   allow_guest_orders?: boolean;
   sender_email?: string;
+  low_stock_threshold?: number;
+  tag_best_seller_enabled?: boolean;
+  tag_low_stock_enabled?: boolean;
+  tag_limited_time_enabled?: boolean;
 }): Promise<StoreSettings> {
   return apiFetch<StoreSettings>('/admin/settings', {
     method: 'PATCH',
@@ -671,6 +694,64 @@ export function adminUpdatePromoCode(id: string, data: {
 
 export function adminDeletePromoCode(id: string): Promise<void> {
   return apiFetch<void>(`/admin/promo-codes/${id}`, { method: 'DELETE' });
+}
+
+// ── Reviews (public) ────────────────────────────────────────────────────────────
+export function getProductReviews(productId: string, params?: { skip?: number; limit?: number }): Promise<Review[]> {
+  return apiFetch<Review[]>(`/products/${productId}/reviews${buildQuery(params ?? {})}`);
+}
+
+export function getProductReviewSummary(productId: string): Promise<ReviewSummary> {
+  return apiFetch<ReviewSummary>(`/products/${productId}/reviews/summary`);
+}
+
+export function createProductReview(productId: string, data: { rating: number; title?: string; body?: string }): Promise<Review> {
+  return customerApiFetch<Review>(`/products/${productId}/reviews`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function getStoreReviews(params?: { skip?: number; limit?: number }): Promise<Review[]> {
+  return apiFetch<Review[]>(`/reviews${buildQuery(params ?? {})}`);
+}
+
+export function getStoreReviewSummary(): Promise<ReviewSummary> {
+  return apiFetch<ReviewSummary>('/reviews/summary');
+}
+
+export function createStoreReview(data: { rating: number; title?: string; body?: string }): Promise<Review> {
+  return customerApiFetch<Review>('/reviews', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateReview(reviewId: string, data: { rating?: number; title?: string; body?: string }): Promise<Review> {
+  return customerApiFetch<Review>(`/reviews/${reviewId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteReview(reviewId: string): Promise<void> {
+  return customerApiFetch<void>(`/reviews/${reviewId}`, { method: 'DELETE' });
+}
+
+// ── Reviews (admin) ──────────────────────────────────────────────────────────────
+export function adminGetReviews(params?: { product_id?: string }): Promise<Review[]> {
+  return apiFetch<Review[]>(`/admin/reviews${buildQuery(params ?? {})}`);
+}
+
+export function adminModerateReview(reviewId: string, is_hidden: boolean): Promise<Review> {
+  return apiFetch<Review>(`/admin/reviews/${reviewId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_hidden }),
+  });
+}
+
+export function adminDeleteReview(reviewId: string): Promise<void> {
+  return apiFetch<void>(`/admin/reviews/${reviewId}`, { method: 'DELETE' });
 }
 
 // ── Product images (public) ────────────────────────────────────────────────────

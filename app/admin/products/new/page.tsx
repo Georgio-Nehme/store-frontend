@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { adminCreateProduct, adminGetCategories, adminUploadImage } from '@/lib/api';
-import { Category, ProductImage, ProductType } from '@/lib/types';
+import { adminCreateProduct, adminGetCategories, adminUploadImage, getStoreSettings } from '@/lib/api';
+import { Category, ProductImage, ProductType, StoreSettings } from '@/lib/types';
 import { VariantManager } from '@/components/admin/VariantManager';
 
 interface UploadedImageItem {
@@ -44,6 +44,11 @@ export default function NewProductPage() {
   const [isActive, setIsActive] = useState(true);
   const [productType, setProductType] = useState<ProductType>('simple');
   const [categoryId, setCategoryId] = useState('');
+  const [moq, setMoq] = useState(1);
+  const [isBestSeller, setIsBestSeller] = useState(false);
+  const [isLimitedTime, setIsLimitedTime] = useState(false);
+  const [limitedTimeEndsAt, setLimitedTimeEndsAt] = useState('');
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadedImages, setUploadedImages] = useState<UploadedImageItem[]>([]);
@@ -56,6 +61,7 @@ export default function NewProductPage() {
 
   useEffect(() => {
     adminGetCategories().then(setCategories).catch(() => setCategories([]));
+    getStoreSettings().then(setStoreSettings).catch(() => setStoreSettings(null));
   }, []);
 
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
@@ -76,6 +82,10 @@ export default function NewProductPage() {
         is_active: isActive,
         product_type: productType,
         category_id: categoryId || null,
+        moq,
+        is_best_seller: isBestSeller,
+        is_limited_time: isLimitedTime,
+        limited_time_ends_at: isLimitedTime && limitedTimeEndsAt ? new Date(limitedTimeEndsAt).toISOString() : null,
       });
       setCreatedProductId(product.id);
       setSuccessMsg('Product created! You can now upload images below.');
@@ -157,10 +167,37 @@ export default function NewProductPage() {
             <Field label="SKU">
               <input type="text" value={sku} onChange={e => setSku(e.target.value)} className="input" />
             </Field>
+            <Field label="Minimum Order Quantity">
+              <input type="number" min={1} value={moq} onChange={e => setMoq(Math.max(1, parseInt(e.target.value) || 1))} className="input" />
+            </Field>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="w-4 h-4" />
               <span className="text-sm font-medium text-gray-700">Active</span>
             </label>
+            {storeSettings?.tag_best_seller_enabled && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} className="w-4 h-4" />
+                <span className="text-sm font-medium text-gray-700">Mark as Best Seller</span>
+              </label>
+            )}
+            {storeSettings?.tag_limited_time_enabled && (
+              <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={isLimitedTime} onChange={e => setIsLimitedTime(e.target.checked)} className="w-4 h-4" />
+                  <span className="text-sm font-medium text-gray-700">Limited Time Only</span>
+                </label>
+                {isLimitedTime && (
+                  <Field label="Ends at (optional)">
+                    <input
+                      type="datetime-local"
+                      value={limitedTimeEndsAt}
+                      onChange={e => setLimitedTimeEndsAt(e.target.value)}
+                      className="input"
+                    />
+                  </Field>
+                )}
+              </div>
+            )}
             <button type="submit" disabled={loading || !!createdProductId} className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors">
               {loading ? 'Creating...' : createdProductId ? 'Product Created' : 'Create Product'}
             </button>

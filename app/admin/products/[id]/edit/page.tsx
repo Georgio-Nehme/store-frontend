@@ -15,8 +15,9 @@ import {
   adminUpdateStock,
   adminUploadImage,
   adminDeleteProductImage,
+  getStoreSettings,
 } from '@/lib/api';
-import { Category, Product, ProductImage, ProductType } from '@/lib/types';
+import { Category, Product, ProductImage, ProductType, StoreSettings } from '@/lib/types';
 
 const STATUS_STYLES: Record<string, string> = {
   ready: 'bg-green-100 text-green-800',
@@ -52,6 +53,14 @@ function StatusBadge({ status }: { status: string }) {
       {status}
     </span>
   );
+}
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function ImageManager({ productId, onImagesChange }: { productId: string; onImagesChange?: (imgs: ProductImage[]) => void }) {
@@ -217,6 +226,11 @@ export default function EditProductPage() {
   const [isActive, setIsActive] = useState(true);
   const [productType, setProductType] = useState<ProductType>('simple');
   const [categoryId, setCategoryId] = useState('');
+  const [moq, setMoq] = useState(1);
+  const [isBestSeller, setIsBestSeller] = useState(false);
+  const [isLimitedTime, setIsLimitedTime] = useState(false);
+  const [limitedTimeEndsAt, setLimitedTimeEndsAt] = useState('');
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [stockChange, setStockChange] = useState(0);
@@ -242,12 +256,17 @@ export default function EditProductPage() {
       setIsActive(nextProduct.is_active);
       setProductType(nextProduct.product_type);
       setCategoryId(nextProduct.category_id || '');
+      setMoq(nextProduct.moq);
+      setIsBestSeller(nextProduct.is_best_seller);
+      setIsLimitedTime(nextProduct.is_limited_time);
+      setLimitedTimeEndsAt(toDatetimeLocal(nextProduct.limited_time_ends_at));
     }
   }
 
   useEffect(() => {
     Promise.all([
       adminGetCategories().then(setCategories),
+      getStoreSettings().then(setStoreSettings).catch(() => setStoreSettings(null)),
       loadProduct(true),
     ]).catch(err => setError(err instanceof Error ? err.message : 'Failed to load product'));
   }, [id]);
@@ -267,6 +286,10 @@ export default function EditProductPage() {
         is_active: isActive,
         product_type: productType,
         category_id: categoryId || null,
+        moq,
+        is_best_seller: isBestSeller,
+        is_limited_time: isLimitedTime,
+        limited_time_ends_at: isLimitedTime && limitedTimeEndsAt ? new Date(limitedTimeEndsAt).toISOString() : null,
       });
       setProduct(updated);
       setSaved(true);
@@ -384,10 +407,39 @@ export default function EditProductPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
                   <input type="text" value={sku} onChange={e => setSku(e.target.value)} className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Order Quantity</label>
+                  <input type="number" min={1} value={moq} onChange={e => setMoq(Math.max(1, parseInt(e.target.value) || 1))} className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="w-4 h-4" />
                   <span className="text-sm font-medium text-gray-700">Active</span>
                 </label>
+                {storeSettings?.tag_best_seller_enabled && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={isBestSeller} onChange={e => setIsBestSeller(e.target.checked)} className="w-4 h-4" />
+                    <span className="text-sm font-medium text-gray-700">Mark as Best Seller</span>
+                  </label>
+                )}
+                {storeSettings?.tag_limited_time_enabled && (
+                  <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={isLimitedTime} onChange={e => setIsLimitedTime(e.target.checked)} className="w-4 h-4" />
+                      <span className="text-sm font-medium text-gray-700">Limited Time Only</span>
+                    </label>
+                    {isLimitedTime && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ends at (optional)</label>
+                        <input
+                          type="datetime-local"
+                          value={limitedTimeEndsAt}
+                          onChange={e => setLimitedTimeEndsAt(e.target.value)}
+                          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button type="submit" disabled={loading} className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors">
                   {loading ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
                 </button>
@@ -435,6 +487,11 @@ export default function EditProductPage() {
               images={previewImages}
               categories={categories}
               categoryId={categoryId}
+              moq={moq}
+              isBestSeller={isBestSeller}
+              isLimitedTime={isLimitedTime}
+              limitedTimeEndsAt={limitedTimeEndsAt}
+              storeSettings={storeSettings}
             />
             <ImageManager productId={id} onImagesChange={setPreviewImages} />
           </div>
