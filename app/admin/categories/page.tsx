@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { adminDeleteCategory, adminGetCategories } from '@/lib/api';
 import { Category } from '@/lib/types';
+import TableStats from '@/components/admin/TableStats';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 
 function flattenCategories(categories: Category[]) {
   const byParent = new Map<string | null, Category[]>();
@@ -59,14 +61,34 @@ export default function AdminCategoriesPage() {
     }
   }
 
+  const activeCount = categories.filter(c => c.is_active).length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Categories</h1>
-        <Link href="/admin/categories/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
-          + Add Category
-        </Link>
+        <div className="flex items-center gap-3">
+          <ExportCsvButton
+            data={rows}
+            filename="categories.csv"
+            columns={[
+              { label: 'Name', value: r => r.category.name },
+              { label: 'Slug', value: r => r.category.slug },
+              { label: 'Parent', value: r => r.category.parent_id ? parentNames[r.category.parent_id] || '' : '' },
+              { label: 'Active', value: r => r.category.is_active ? 'active' : 'inactive' },
+              { label: 'Subcategories', value: r => r.category.subcategories.length },
+            ]}
+          />
+          <Link href="/admin/categories/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+            + Add Category
+          </Link>
+        </div>
       </div>
+
+      <TableStats stats={[
+        { label: 'Categories', value: categories.length },
+        { label: 'Active', value: activeCount },
+      ]} />
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 

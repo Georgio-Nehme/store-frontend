@@ -9,6 +9,8 @@ import {
 } from '@/lib/api';
 import { PromoCode } from '@/lib/types';
 import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
+import TableStats from '@/components/admin/TableStats';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 
 const emptyForm = {
   code: '',
@@ -105,6 +107,9 @@ export default function AdminPromoCodesPage() {
     (c, q) => [c.code, c.description || '', c.is_active ? 'active' : 'inactive'].some(v => v.toLowerCase().includes(q)),
   );
 
+  const totalUses = sorted.reduce((sum, c) => sum + c.uses_count, 0);
+  const activeCount = sorted.filter(c => c.is_active).length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -112,13 +117,35 @@ export default function AdminPromoCodesPage() {
           <h1 className="text-2xl font-bold text-gray-800">Promo Codes</h1>
           <p className="text-sm text-gray-500 mt-0.5">{codes.length} code{codes.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => { setShowForm(!showForm); setFormError(null); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
-        >
-          {showForm ? 'Cancel' : '+ New Code'}
-        </button>
+        <div className="flex items-center gap-3">
+          <ExportCsvButton
+            data={sorted}
+            filename="promo-codes.csv"
+            columns={[
+              { label: 'Code', value: c => c.code },
+              { label: 'Description', value: c => c.description || '' },
+              { label: 'Discount', value: c => formatDiscount(c) },
+              { label: 'Min Order', value: c => c.min_order_amount ? parseFloat(c.min_order_amount).toFixed(2) : '' },
+              { label: 'Uses', value: c => c.uses_count },
+              { label: 'Max Uses', value: c => c.max_uses ?? '' },
+              { label: 'Expires', value: c => c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '' },
+              { label: 'Status', value: c => c.is_active ? 'active' : 'inactive' },
+            ]}
+          />
+          <button
+            onClick={() => { setShowForm(!showForm); setFormError(null); }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+          >
+            {showForm ? 'Cancel' : '+ New Code'}
+          </button>
+        </div>
       </div>
+
+      <TableStats stats={[
+        { label: 'Codes', value: sorted.length },
+        { label: 'Active', value: activeCount },
+        { label: 'Total Uses', value: totalUses },
+      ]} />
 
       {/* Create form */}
       {showForm && (

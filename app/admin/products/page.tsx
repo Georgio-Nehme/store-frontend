@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { adminDeleteProduct, adminGetProducts, adminUpdateStock } from '@/lib/api';
 import { Product } from '@/lib/types';
 import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
+import TableStats from '@/components/admin/TableStats';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 
 function getVal(p: Product, col: string): string | number {
   if (col === 'price') return parseFloat(p.price);
@@ -62,15 +64,38 @@ export default function AdminProductsPage() {
   }
 
   const thCls = 'text-left text-gray-500 uppercase text-xs tracking-wide';
+  const totalStock = sorted.reduce((sum, p) => sum + (p.stock || 0), 0);
+  const inventoryValue = sorted.reduce((sum, p) => sum + parseFloat(p.price) * (p.stock || 0), 0);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Products</h1>
-        <Link href="/admin/products/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
-          + Add Product
-        </Link>
+        <div className="flex items-center gap-3">
+          <ExportCsvButton
+            data={sorted}
+            filename="products.csv"
+            columns={[
+              { label: 'Name', value: p => p.name },
+              { label: 'Category', value: p => p.category?.name || '' },
+              { label: 'Type', value: p => p.product_type },
+              { label: 'SKU', value: p => p.sku || '' },
+              { label: 'Price', value: p => parseFloat(p.price).toFixed(2) },
+              { label: 'Stock', value: p => p.stock },
+              { label: 'Status', value: p => p.is_active ? 'active' : 'inactive' },
+            ]}
+          />
+          <Link href="/admin/products/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+            + Add Product
+          </Link>
+        </div>
       </div>
+
+      <TableStats stats={[
+        { label: 'Products', value: sorted.length },
+        { label: 'Total Stock', value: totalStock },
+        { label: 'Inventory Value', value: `$${inventoryValue.toFixed(2)}` },
+      ]} />
 
       <div className="mb-4">
         <input

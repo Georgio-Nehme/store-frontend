@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { adminGetOrders, adminGetCustomers, adminUpdateOrderStatus } from '@/lib/api';
 import { Order, Customer } from '@/lib/types';
 import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
+import TableStats from '@/components/admin/TableStats';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -60,13 +62,39 @@ export default function AdminOrdersPage() {
   }
 
   const thCls = 'text-left text-gray-500';
+  const totalRevenue = sorted.reduce((sum, o) => sum + parseFloat(o.total_amount), 0);
+  const avgOrder = sorted.length ? totalRevenue / sorted.length : 0;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Orders</h1>
-        <button onClick={load} className="text-sm text-blue-600 hover:underline">Refresh</button>
+        <div className="flex items-center gap-3">
+          <ExportCsvButton
+            data={sorted}
+            filename="orders.csv"
+            columns={[
+              { label: 'Order ID', value: o => o.id },
+              { label: 'Customer', value: o => {
+                const c = o.customer_id ? customers.get(o.customer_id) : undefined;
+                return c?.name || c?.email || o.guest_info?.name || 'Guest';
+              } },
+              { label: 'Status', value: o => o.status },
+              { label: 'Items', value: o => o.items.length },
+              { label: 'Total', value: o => parseFloat(o.total_amount).toFixed(2) },
+              { label: 'Shipping Address', value: o => o.shipping_address || '' },
+              { label: 'Date', value: o => new Date(o.created_at).toLocaleDateString() },
+            ]}
+          />
+          <button onClick={load} className="text-sm text-blue-600 hover:underline">Refresh</button>
+        </div>
       </div>
+
+      <TableStats stats={[
+        { label: 'Orders', value: sorted.length },
+        { label: 'Revenue', value: `$${totalRevenue.toFixed(2)}` },
+        { label: 'Avg Order', value: `$${avgOrder.toFixed(2)}` },
+      ]} />
 
       <div className="mb-4">
         <input

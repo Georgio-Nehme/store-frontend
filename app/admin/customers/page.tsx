@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { adminGetCustomersWithStats } from '@/lib/api';
 import { CustomerWithStats } from '@/lib/types';
 import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
+import TableStats from '@/components/admin/TableStats';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<CustomerWithStats[]>([]);
@@ -33,20 +35,37 @@ export default function AdminCustomersPage() {
     (c, q) => [c.name, c.email, c.phone, c.address].some(v => v?.toLowerCase().includes(q)),
   );
 
-  const totalRevenue = customers.reduce((sum, c) => sum + parseFloat(c.total_spent || '0'), 0);
+  const totalRevenue = sorted.reduce((sum, c) => sum + parseFloat(c.total_spent || '0'), 0);
+  const avgSpent = sorted.length ? totalRevenue / sorted.length : 0;
   const thCls = 'text-left text-gray-500';
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {customers.length} total · ${totalRevenue.toFixed(2)} total revenue
-          </p>
+        <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
+        <div className="flex items-center gap-3">
+          <ExportCsvButton
+            data={sorted}
+            filename="customers.csv"
+            columns={[
+              { label: 'Name', value: c => c.name || '' },
+              { label: 'Email', value: c => c.email },
+              { label: 'Phone', value: c => c.phone || '' },
+              { label: 'Address', value: c => c.address || '' },
+              { label: 'Orders', value: c => c.order_count },
+              { label: 'Total Spent', value: c => parseFloat(c.total_spent || '0').toFixed(2) },
+              { label: 'Joined', value: c => new Date(c.created_at).toLocaleDateString() },
+            ]}
+          />
+          <button onClick={load} className="text-sm text-blue-600 hover:underline">Refresh</button>
         </div>
-        <button onClick={load} className="text-sm text-blue-600 hover:underline">Refresh</button>
       </div>
+
+      <TableStats stats={[
+        { label: 'Customers', value: sorted.length },
+        { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}` },
+        { label: 'Avg Spent', value: `$${avgSpent.toFixed(2)}` },
+      ]} />
 
       <div className="mb-4">
         <input

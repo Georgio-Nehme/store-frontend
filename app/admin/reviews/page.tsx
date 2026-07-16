@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { adminDeleteReview, adminGetProducts, adminGetReviews, adminModerateReview } from '@/lib/api';
 import { Product, Review } from '@/lib/types';
 import StarRating from '@/components/StarRating';
+import TableStats from '@/components/admin/TableStats';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -48,12 +50,36 @@ export default function AdminReviewsPage() {
     }
   }
 
+  const avgRating = reviews.length ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+  const hiddenCount = reviews.filter(r => r.is_hidden).length;
+
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Reviews</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Reviews</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>
+        </div>
+        <ExportCsvButton
+          data={reviews}
+          filename="reviews.csv"
+          columns={[
+            { label: 'Target', value: r => r.product_id ? (productNameById.get(r.product_id) ?? 'Unknown product') : 'Store review' },
+            { label: 'Customer', value: r => r.customer_name || 'Anonymous' },
+            { label: 'Rating', value: r => r.rating },
+            { label: 'Title', value: r => r.title || '' },
+            { label: 'Body', value: r => r.body || '' },
+            { label: 'Date', value: r => new Date(r.created_at).toLocaleDateString() },
+            { label: 'Status', value: r => r.is_hidden ? 'hidden' : 'visible' },
+          ]}
+        />
       </div>
+
+      <TableStats stats={[
+        { label: 'Reviews', value: reviews.length },
+        { label: 'Avg Rating', value: avgRating.toFixed(1) },
+        { label: 'Hidden', value: hiddenCount },
+      ]} />
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
