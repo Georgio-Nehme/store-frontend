@@ -39,6 +39,7 @@ export default function NewProductPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [comparePrice, setComparePrice] = useState('');
+  const [cost, setCost] = useState('');
   const [stock, setStock] = useState(0);
   const [sku, setSku] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -77,6 +78,7 @@ export default function NewProductPage() {
         description,
         price,
         compare_price: comparePrice || undefined,
+        cost: cost || undefined,
         stock: productType === 'variable' ? 0 : stock,
         sku: sku || undefined,
         is_active: isActive,
@@ -155,6 +157,11 @@ export default function NewProductPage() {
             <Field label="Compare Price (original/was price)">
               <input type="number" step="0.01" min="0" value={comparePrice} onChange={e => setComparePrice(e.target.value)} placeholder="Leave blank for no sale badge" className="input" />
             </Field>
+            {storeSettings?.finance_plugin_enabled && (
+              <Field label="Cost">
+                <input type="number" step="0.01" min="0" value={cost} onChange={e => setCost(e.target.value)} placeholder="Used for margin reporting" className="input" />
+              </Field>
+            )}
             {productType === 'variable' ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 Stock is managed via variants.

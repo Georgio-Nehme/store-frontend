@@ -221,6 +221,7 @@ export default function EditProductPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [comparePrice, setComparePrice] = useState('');
+  const [cost, setCost] = useState('');
   const [stock, setStock] = useState(0);
   const [sku, setSku] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -251,6 +252,7 @@ export default function EditProductPage() {
       setDescription(nextProduct.description || '');
       setPrice(nextProduct.price);
       setComparePrice(nextProduct.compare_price || '');
+      setCost(nextProduct.cost || '');
       setStock(nextProduct.stock);
       setSku(nextProduct.sku || '');
       setIsActive(nextProduct.is_active);
@@ -281,6 +283,7 @@ export default function EditProductPage() {
         description,
         price,
         compare_price: comparePrice || null,
+        cost: cost || null,
         stock: productType === 'variable' ? undefined : stock,
         sku: sku || undefined,
         is_active: isActive,
@@ -393,6 +396,12 @@ export default function EditProductPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Compare Price (original/was price)</label>
                   <input type="number" step="0.01" min="0" value={comparePrice} onChange={e => setComparePrice(e.target.value)} placeholder="Leave blank to remove sale badge" className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+                {storeSettings?.finance_plugin_enabled && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cost</label>
+                    <input type="number" step="0.01" min="0" value={cost} onChange={e => setCost(e.target.value)} placeholder="Used for margin reporting" className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                )}
                 {productType !== 'variable' ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>

@@ -10,6 +10,7 @@ import {
   CustomerDetail,
   CustomerSession,
   CustomerWithStats,
+  FinanceReport,
   OptionChoice,
   OptionGroup,
   OptionType,
@@ -20,6 +21,7 @@ import {
   ProductType,
   PromoCode,
   PromoCodeValidateResponse,
+  Refund,
   Review,
   ReviewSummary,
   StoreSettings,
@@ -192,6 +194,8 @@ export async function getPublicStoreSettings(): Promise<StoreSettings> {
     tag_best_seller_enabled: true,
     tag_low_stock_enabled: true,
     tag_limited_time_enabled: true,
+    finance_plugin_enabled: false,
+    tax_rate: '0',
   };
   return res.json();
 }
@@ -346,6 +350,7 @@ export function adminCreateProduct(data: {
   description?: string;
   price: string;
   compare_price?: string;
+  cost?: string;
   stock: number;
   sku?: string;
   is_active: boolean;
@@ -367,6 +372,7 @@ export function adminUpdateProduct(id: string, data: {
   description?: string;
   price?: string;
   compare_price?: string | null;
+  cost?: string | null;
   stock?: number;
   sku?: string;
   is_active?: boolean;
@@ -597,6 +603,13 @@ export function adminGetOrder(orderId: string): Promise<Order> {
   return apiFetch<Order>(`/admin/orders/${orderId}`);
 }
 
+export function adminCreateRefund(orderId: string, data: { amount: string; reason?: string }): Promise<Refund> {
+  return apiFetch<Refund>(`/admin/orders/${orderId}/refunds`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export function adminUpdateOrderStatus(orderId: string, status: Order['status']): Promise<Order> {
   return apiFetch<Order>(`/admin/orders/${orderId}/status`, {
     method: 'PATCH',
@@ -633,6 +646,17 @@ export function adminGetAnalytics(
   return apiFetch<AnalyticsData>(`/admin/analytics?days=${days ?? 30}`);
 }
 
+// Admin finance
+export function adminGetFinanceReport(
+  params: { days?: number; start_date?: string; end_date?: string } = { days: 30 }
+): Promise<FinanceReport> {
+  const { days, start_date, end_date } = params;
+  if (start_date && end_date) {
+    return apiFetch<FinanceReport>(`/admin/finance/report?start_date=${start_date}&end_date=${end_date}`);
+  }
+  return apiFetch<FinanceReport>(`/admin/finance/report?days=${days ?? 30}`);
+}
+
 // Admin settings
 export async function getStoreSettings(): Promise<StoreSettings> {
   return apiFetch<StoreSettings>('/admin/settings');
@@ -646,6 +670,7 @@ export async function updateStoreSettings(data: {
   tag_best_seller_enabled?: boolean;
   tag_low_stock_enabled?: boolean;
   tag_limited_time_enabled?: boolean;
+  tax_rate?: number;
 }): Promise<StoreSettings> {
   return apiFetch<StoreSettings>('/admin/settings', {
     method: 'PATCH',

@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [tagBestSellerEnabled, setTagBestSellerEnabled] = useState(true);
   const [tagLowStockEnabled, setTagLowStockEnabled] = useState(true);
   const [tagLimitedTimeEnabled, setTagLimitedTimeEnabled] = useState(true);
+  const [financePluginEnabled, setFinancePluginEnabled] = useState(false);
+  const [taxRate, setTaxRate] = useState('0');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -30,6 +32,8 @@ export default function SettingsPage() {
         setTagBestSellerEnabled(s.tag_best_seller_enabled);
         setTagLowStockEnabled(s.tag_low_stock_enabled);
         setTagLimitedTimeEnabled(s.tag_limited_time_enabled);
+        setFinancePluginEnabled(s.finance_plugin_enabled);
+        setTaxRate(s.tax_rate);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -49,6 +53,7 @@ export default function SettingsPage() {
         tag_best_seller_enabled: tagBestSellerEnabled,
         tag_low_stock_enabled: tagLowStockEnabled,
         tag_limited_time_enabled: tagLimitedTimeEnabled,
+        tax_rate: parseFloat(taxRate) || 0,
       });
       setSenderEmailVerified(updated.sender_email_verified);
       setSuccess(true);
@@ -197,6 +202,38 @@ export default function SettingsPage() {
                 </div>
               )}
               {resendMsg && <p className="text-xs text-gray-500">{resendMsg}</p>}
+            </div>
+
+            <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Accounting &amp; Finance</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Tax, invoicing, refunds, and financial/margin reports. Enabled or disabled by
+                    your platform provider, not from here.
+                  </p>
+                </div>
+                <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${financePluginEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+                  {financePluginEnabled ? 'Enabled' : 'Not enabled'}
+                </span>
+              </div>
+              {financePluginEnabled && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={taxRate}
+                    onChange={e => setTaxRate(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Applied to new orders&apos; subtotal (after discount, before delivery fee).
+                  </p>
+                </div>
+              )}
             </div>
 
             <button

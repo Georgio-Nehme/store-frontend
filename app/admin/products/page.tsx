@@ -2,11 +2,18 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { adminDeleteProduct, adminGetProducts, adminUpdateStock } from '@/lib/api';
-import { Product } from '@/lib/types';
+import { adminDeleteProduct, adminGetProducts, adminUpdateStock, getStoreSettings } from '@/lib/api';
+import { Product, StoreSettings } from '@/lib/types';
 import SortableHeader, { useSortFilter } from '@/components/admin/SortableHeader';
 import TableStats from '@/components/admin/TableStats';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
+
+function marginPct(p: Product): number | null {
+  if (!p.cost) return null;
+  const price = parseFloat(p.price);
+  if (!price) return null;
+  return ((price - parseFloat(p.cost)) / price) * 100;
+}
 
 function getVal(p: Product, col: string): string | number {
   if (col === 'price') return parseFloat(p.price);
@@ -18,6 +25,7 @@ function getVal(p: Product, col: string): string | number {
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +42,10 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     load();
+    getStoreSettings().then(setStoreSettings).catch(() => setStoreSettings(null));
   }, []);
+
+  const financeEnabled = storeSettings?.finance_plugin_enabled ?? false;
 
   const { sorted, sortCol, sortDir, handleSort, query, setQuery } = useSortFilter(
     products,
@@ -66,6 +77,7 @@ export default function AdminProductsPage() {
   const thCls = 'text-left text-gray-500 uppercase text-xs tracking-wide';
   const totalStock = sorted.reduce((sum, p) => sum + (p.stock || 0), 0);
   const inventoryValue = sorted.reduce((sum, p) => sum + parseFloat(p.price) * (p.stock || 0), 0);
+  const estMargin = sorted.reduce((sum, p) => sum + (p.cost ? (parseFloat(p.price) - parseFloat(p.cost)) * (p.stock || 0) : 0), 0);
 
   return (
     <div>
@@ -81,6 +93,10 @@ export default function AdminProductsPage() {
               { label: 'Type', value: p => p.product_type },
               { label: 'SKU', value: p => p.sku || '' },
               { label: 'Price', value: p => parseFloat(p.price).toFixed(2) },
+              ...(financeEnabled ? [
+                { label: 'Cost', value: (p: Product) => p.cost ? parseFloat(p.cost).toFixed(2) : '' },
+                { label: 'Margin %', value: (p: Product) => { const m = marginPct(p); return m === null ? '' : m.toFixed(1); } },
+              ] : []),
               { label: 'Stock', value: p => p.stock },
               { label: 'Status', value: p => p.is_active ? 'active' : 'inactive' },
             ]}
@@ -95,6 +111,7 @@ export default function AdminProductsPage() {
         { label: 'Products', value: sorted.length },
         { label: 'Total Stock', value: totalStock },
         { label: 'Inventory Value', value: `$${inventoryValue.toFixed(2)}` },
+        ...(financeEnabled ? [{ label: 'Est. Margin', value: `$${estMargin.toFixed(2)}` }] : []),
       ]} />
 
       <div className="mb-4">
@@ -119,6 +136,8 @@ export default function AdminProductsPage() {
                 <SortableHeader label="Type" column="type" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">SKU</th>
                 <SortableHeader label="Price" column="price" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                {financeEnabled && <th className="px-4 py-3">Cost</th>}
+                {financeEnabled && <th className="px-4 py-3">Margin %</th>}
                 <SortableHeader label="Stock" column="stock" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortableHeader label="Status" column="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3">Actions</th>
@@ -137,6 +156,12 @@ export default function AdminProductsPage() {
                       <span className="ml-2 text-xs text-gray-400 line-through">${parseFloat(p.compare_price).toFixed(2)}</span>
                     )}
                   </td>
+                  {financeEnabled && <td className="px-4 py-3 text-gray-500">{p.cost ? `$${parseFloat(p.cost).toFixed(2)}` : '—'}</td>}
+                  {financeEnabled && (
+                    <td className="px-4 py-3">
+                      {marginPct(p) === null ? '—' : <span className={marginPct(p)! < 0 ? 'text-red-600' : 'text-gray-700'}>{marginPct(p)!.toFixed(1)}%</span>}
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     {p.product_type === 'variable' ? (
                       <span className="text-xs text-gray-500">Managed by variants ({p.stock})</span>
@@ -162,7 +187,7 @@ export default function AdminProductsPage() {
                 </tr>
               ))}
               {sorted.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-gray-400 text-center">{query ? 'No products match your search' : 'No products found'}</td></tr>
+                <tr><td colSpan={financeEnabled ? 10 : 8} className="px-4 py-8 text-gray-400 text-center">{query ? 'No products match your search' : 'No products found'}</td></tr>
               )}
             </tbody>
           </table>

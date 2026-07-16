@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { adminGetCustomers, adminGetOrder, adminUpdateOrderStatus } from '@/lib/api';
-import { Customer, Order } from '@/lib/types';
+import { adminCreateRefund, adminGetCustomers, adminGetOrder, adminUpdateOrderStatus, getStoreSettings } from '@/lib/api';
+import { Customer, Order, StoreSettings } from '@/lib/types';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -27,6 +27,11 @@ export default function AdminOrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [refundError, setRefundError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -48,6 +53,24 @@ export default function AdminOrderDetailPage() {
   }
 
   useEffect(() => { load(); }, [id]);
+  useEffect(() => { getStoreSettings().then(setStoreSettings).catch(() => setStoreSettings(null)); }, []);
+
+  async function handleCreateRefund(e: React.FormEvent) {
+    e.preventDefault();
+    if (!order) return;
+    setRefundError(null);
+    setRefundSubmitting(true);
+    try {
+      await adminCreateRefund(order.id, { amount: refundAmount, reason: refundReason || undefined });
+      setRefundAmount('');
+      setRefundReason('');
+      await load();
+    } catch (err: unknown) {
+      setRefundError(err instanceof Error ? err.message : 'Failed to issue refund');
+    } finally {
+      setRefundSubmitting(false);
+    }
+  }
 
   async function handleStatusChange(newStatus: Order['status']) {
     if (!order) return;
@@ -129,12 +152,102 @@ export default function AdminOrderDetailPage() {
     y += 6;
     doc.text('Delivery', 140, y);
     doc.text(`$${parseFloat(order.delivery_fee).toFixed(2)}`, 175, y);
+    if (parseFloat(order.tax_amount) > 0) {
+      y += 6;
+      doc.text('Tax', 140, y);
+      doc.text(`$${parseFloat(order.tax_amount).toFixed(2)}`, 175, y);
+    }
     y += 7;
     doc.setFontSize(11);
     doc.text('Total', 140, y);
     doc.text(`$${parseFloat(order.total_amount).toFixed(2)}`, 175, y);
 
     doc.save(`delivery-order-${order.id.slice(0, 8)}.pdf`);
+  }
+
+  async function handleDownloadInvoice() {
+    if (!order) return;
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'My Store';
+    const marginX = 14;
+    let y = 18;
+
+    doc.setFontSize(16);
+    doc.text(storeName, marginX, y);
+    doc.setFontSize(10);
+    doc.text('Invoice', marginX, (y += 6));
+
+    doc.setFontSize(10);
+    doc.text(`Invoice #${String(order.invoice_number).padStart(6, '0')}`, 140, 18);
+    doc.text(`Order #${order.id.slice(0, 8).toUpperCase()}`, 140, 24);
+    doc.text(new Date(order.created_at).toLocaleDateString(), 140, 30);
+
+    y += 10;
+    doc.setFontSize(11);
+    doc.text('Bill To:', marginX, y);
+    y += 6;
+    doc.setFontSize(10);
+    doc.text(recipientName, marginX, y);
+    if (recipientEmail) doc.text(recipientEmail, marginX, (y += 5));
+    if (shippingAddress) {
+      const lines = doc.splitTextToSize(shippingAddress, 180);
+      doc.text(lines, marginX, (y += 5));
+      y += lines.length * 5;
+    }
+
+    y += 8;
+    doc.setFontSize(10);
+    doc.text('Item', marginX, y);
+    doc.text('Qty', 130, y);
+    doc.text('Price', 150, y);
+    doc.text('Total', 175, y);
+    y += 2;
+    doc.line(marginX, y, 196, y);
+    y += 6;
+
+    order.items.forEach(item => {
+      const label = item.variant_label_snapshot
+        ? `${item.product_name_snapshot || 'Item'} (${item.variant_label_snapshot})`
+        : item.product_name_snapshot || 'Item';
+      const lineTotal = (parseFloat(item.unit_price) * item.quantity).toFixed(2);
+      doc.text(doc.splitTextToSize(label, 110), marginX, y);
+      doc.text(String(item.quantity), 130, y);
+      doc.text(`$${parseFloat(item.unit_price).toFixed(2)}`, 150, y);
+      doc.text(`$${lineTotal}`, 175, y);
+      y += 7;
+    });
+
+    y += 4;
+    doc.line(140, y, 196, y);
+    y += 6;
+    doc.text('Subtotal', 140, y);
+    doc.text(`$${subtotal.toFixed(2)}`, 175, y);
+    if (parseFloat(order.discount_amount) > 0) {
+      y += 6;
+      doc.text('Discount', 140, y);
+      doc.text(`-$${parseFloat(order.discount_amount).toFixed(2)}`, 175, y);
+    }
+    y += 6;
+    doc.text('Delivery', 140, y);
+    doc.text(`$${parseFloat(order.delivery_fee).toFixed(2)}`, 175, y);
+    if (parseFloat(order.tax_amount) > 0) {
+      y += 6;
+      doc.text(`Tax (${storeSettings?.tax_rate ? parseFloat(storeSettings.tax_rate) : ''}%)`, 140, y);
+      doc.text(`$${parseFloat(order.tax_amount).toFixed(2)}`, 175, y);
+    }
+    y += 7;
+    doc.setFontSize(11);
+    doc.text('Total', 140, y);
+    doc.text(`$${parseFloat(order.total_amount).toFixed(2)}`, 175, y);
+    if (parseFloat(order.total_refunded) > 0) {
+      y += 6;
+      doc.setFontSize(10);
+      doc.text('Refunded', 140, y);
+      doc.text(`-$${parseFloat(order.total_refunded).toFixed(2)}`, 175, y);
+    }
+
+    doc.save(`invoice-${String(order.invoice_number).padStart(6, '0')}.pdf`);
   }
 
   if (loading) return <div className="animate-pulse bg-white rounded-xl h-64 max-w-3xl" />;
@@ -169,6 +282,11 @@ export default function AdminOrderDetailPage() {
             <button onClick={handleDownloadPdf} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors">
               Download PDF
             </button>
+            {storeSettings?.finance_plugin_enabled && order.invoice_number && (
+              <button onClick={handleDownloadInvoice} className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800 transition-colors">
+                Download Invoice
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -234,8 +352,64 @@ export default function AdminOrderDetailPage() {
             <div className="flex justify-between w-48 text-green-600"><span>Discount</span><span>-{formatMoney(order.discount_amount)}</span></div>
           )}
           <div className="flex justify-between w-48"><span className="text-gray-500">Delivery</span><span>{formatMoney(order.delivery_fee)}</span></div>
+          {parseFloat(order.tax_amount) > 0 && (
+            <div className="flex justify-between w-48"><span className="text-gray-500">Tax</span><span>{formatMoney(order.tax_amount)}</span></div>
+          )}
           <div className="flex justify-between w-48 font-bold text-base border-t pt-1 mt-1"><span>Total</span><span>{formatMoney(order.total_amount)}</span></div>
+          {parseFloat(order.total_refunded) > 0 && (
+            <div className="flex justify-between w-48 text-red-600"><span>Refunded</span><span>-{formatMoney(order.total_refunded)}</span></div>
+          )}
         </div>
+
+        {storeSettings?.finance_plugin_enabled && (
+          <div className="print:hidden mt-8 pt-6 border-t">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Refunds</h3>
+            {order.refunds.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {order.refunds.map(r => (
+                  <div key={r.id} className="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
+                    <div>
+                      <span className="font-medium text-gray-800">{formatMoney(r.amount)}</span>
+                      {r.reason && <span className="text-gray-500 ml-2">{r.reason}</span>}
+                    </div>
+                    <span className="text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {refundError && <p className="text-red-600 text-sm mb-3 p-2 bg-red-50 rounded-lg">{refundError}</p>}
+            <form onSubmit={handleCreateRefund} className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Amount ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  value={refundAmount}
+                  onChange={e => setRefundAmount(e.target.value)}
+                  className="w-32 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex-1 min-w-[160px]">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Reason (optional)</label>
+                <input
+                  type="text"
+                  value={refundReason}
+                  onChange={e => setRefundReason(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={refundSubmitting}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 disabled:bg-gray-300 font-medium transition-colors"
+              >
+                {refundSubmitting ? 'Issuing…' : 'Issue Refund'}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

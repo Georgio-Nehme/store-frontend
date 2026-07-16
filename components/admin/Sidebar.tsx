@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { adminSignOut } from '@/lib/auth';
+import { getStoreSettings } from '@/lib/api';
 
-const links = [
+const baseLinks = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/categories', label: 'Categories' },
@@ -17,9 +19,20 @@ const links = [
   { href: '/admin/account/password', label: 'Change Password' },
 ];
 
+const financeLink = { href: '/admin/finance', label: 'Finance' };
+
 export default function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [financeEnabled, setFinanceEnabled] = useState(false);
+
+  useEffect(() => {
+    getStoreSettings().then(s => setFinanceEnabled(s.finance_plugin_enabled)).catch(() => setFinanceEnabled(false));
+  }, []);
+
+  const links = financeEnabled
+    ? [...baseLinks.slice(0, 7), financeLink, ...baseLinks.slice(7)]
+    : baseLinks;
 
   async function handleLogout() {
     await adminSignOut();

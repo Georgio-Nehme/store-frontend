@@ -117,6 +117,7 @@ export interface Product {
   description: string | null;
   price: string;
   compare_price: string | null;
+  cost: string | null;
   stock: number;
   sku: string | null;
   product_type: ProductType;
@@ -262,6 +263,14 @@ export interface OrderGuestInfo {
   shipping_address: string | null;
 }
 
+export interface Refund {
+  id: string;
+  order_id: string;
+  amount: string;
+  reason: string | null;
+  created_at: string;
+}
+
 export interface Order {
   id: string;
   store_id: string;
@@ -270,11 +279,15 @@ export interface Order {
   total_amount: string;
   discount_amount: string;
   delivery_fee: string;
+  tax_amount: string;
+  invoice_number: number | null;
   promo_code_used: string | null;
   shipping_address: string | null;
   notes: string | null;
   guest_info: OrderGuestInfo | null;
   items: OrderItem[];
+  refunds: Refund[];
+  total_refunded: string;
   created_at: string;
   updated_at: string | null;
 }
@@ -288,6 +301,32 @@ export interface StoreSettings {
   tag_best_seller_enabled: boolean;
   tag_low_stock_enabled: boolean;
   tag_limited_time_enabled: boolean;
+  finance_plugin_enabled: boolean;
+  tax_rate: string;
+}
+
+export interface FinanceProductMargin {
+  name: string;
+  revenue: number;
+  cogs: number;
+  margin: number;
+  margin_pct: number | null;
+}
+
+export interface FinanceReport {
+  period_start: string;
+  period_end: string;
+  gross_revenue: number;
+  tax_collected: number;
+  discounts_given: number;
+  delivery_fees_collected: number;
+  refunds_issued: number;
+  net_revenue: number;
+  cogs: number;
+  gross_margin: number;
+  gross_margin_pct: number | null;
+  invoice_count: number;
+  top_products_by_margin: FinanceProductMargin[];
 }
 
 // ─── Reviews ──────────────────────────────────────────────────────────────────
