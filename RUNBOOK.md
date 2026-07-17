@@ -83,6 +83,64 @@ separate manual step on your end for now — not covered here.
      shows the conflict, isolated to that one store. Resolve it there; other stores'
      PRs are unaffected.
 
+## Pulling a feature from the template into your store
+
+This is the "receiving" side of the flow above — what to actually do when a template
+release lands, or when you want to pull in a not-yet-tagged change early.
+
+### Normal path: merge the sync PR
+
+1. `notify-stores.yml` already opened a "Sync template vX.Y.Z" PR on your store's repo
+   (see "Shipping a feature" above for how it's triggered).
+2. Review the diff like any PR. If your fork only customized `store.config/`, it merges
+   cleanly.
+3. Merge it — this triggers your fork's own `deploy.yml`, which builds and pushes the
+   new image.
+4. **If the feature touches the backend** (new model fields, a new table, a new
+   endpoint — check the template's `CHANGELOG.md` entry for that release), pulling the
+   frontend image is not the whole story: see "Backend changes" below before you
+   consider the release actually live.
+
+### Manual path: pull a specific commit before it's tagged
+
+Use this if you want a change now instead of waiting for the next version tag:
+
+```
+git remote add template git@github.com:Georgio-Nehme/store-frontend.git   # one-time
+git fetch template
+git merge template/main          # or: git cherry-pick <sha> for a single commit
+git push origin main
+```
+
+Resolve conflicts if your fork hand-edited a shared file the change also touches.
+
+### Backend changes — don't skip this
+
+Unlike `store-frontend`, the backend (`ecom-platform`) is **not** forked per store —
+it's one shared deployment. A frontend feature that depends on new backend fields or
+endpoints needs its own rollout on that repo, and this is where things have actually
+broken in practice:
+
+1. **Check for untracked files before you push.** `git status` on `ecom-platform`
+   before every commit — new model/schema/route files are easy to `git add` selectively
+   and forget one. A forgotten file means the *code that imports it* ships, but the
+   file itself doesn't, and the container crash-loops on boot (`ModuleNotFoundError`)
+   the moment it's deployed. This has happened more than once — treat an untracked file
+   showing up in `git status` right before a push as a blocker, not a FYI.
+2. **Migrations don't run themselves.** After deploying a new backend image, you still
+   need to run `docker exec ecom-backend alembic upgrade head` on the target server —
+   pushing the image does not apply pending migrations. Check first with
+   `docker exec ecom-backend alembic current` if you're not sure it's behind.
+3. **Watch for the `Base.metadata.create_all()` collision.** `app/main.py` runs
+   `Base.metadata.create_all(bind=engine)` on every boot as a dev convenience (wrapped in
+   a silent `try/except: pass`). If a release adds a brand-new table, this can create it
+   with an incomplete schema (e.g. missing indexes defined only in the migration) *before*
+   you get a chance to run `alembic upgrade head` — the migration's own `CREATE TABLE`
+   then fails with `DuplicateTable`. If you hit that: drop the incomplete table
+   (`DROP TABLE <name>;`) and re-run the migration so it's created correctly instead.
+4. Only after both the migration is applied and the container is running clean logs
+   (`docker logs ecom-backend`) is the feature actually live end-to-end.
+
 ## Image tags
 
 Every deploy pushes `<template-version>-<git-sha>` (e.g. `1.4.0-a1b2c3d`) alongside

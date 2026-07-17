@@ -10,11 +10,26 @@ import {
 } from '@/lib/api';
 import { OptionType } from '@/lib/types';
 
+function isHexColor(val: string | null | undefined): boolean {
+  return !!val && /^#[0-9A-Fa-f]{3,8}$/.test(val.trim());
+}
+
+type DisplayType = 'text' | 'color';
+
+interface ValueForm {
+  value: string;
+  display_value: string;
+  position: number;
+  displayType: DisplayType;
+}
+
+const emptyValueForm: ValueForm = { value: '', display_value: '', position: 0, displayType: 'text' };
+
 export default function AdminOptionTypesPage() {
   const [optionTypes, setOptionTypes] = useState<OptionType[]>([]);
   const [name, setName] = useState('');
   const [position, setPosition] = useState(0);
-  const [valueForms, setValueForms] = useState<Record<string, { value: string; display_value: string; position: number }>>({});
+  const [valueForms, setValueForms] = useState<Record<string, ValueForm>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -70,7 +85,7 @@ export default function AdminOptionTypesPage() {
         display_value: form.display_value || null,
         position: form.position,
       });
-      setValueForms(prev => ({ ...prev, [typeId]: { value: '', display_value: '', position: 0 } }));
+      setValueForms(prev => ({ ...prev, [typeId]: { ...emptyValueForm } }));
       await loadOptionTypes();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to add value');
@@ -118,7 +133,7 @@ export default function AdminOptionTypesPage() {
       ) : (
         <div className="grid gap-4">
           {optionTypes.map(type => {
-            const form = valueForms[type.id] ?? { value: '', display_value: '', position: 0 };
+            const form = valueForms[type.id] ?? emptyValueForm;
             return (
               <div key={type.id} className="bg-white rounded-xl shadow p-6 space-y-4">
                 <div className="flex items-start justify-between gap-4">
@@ -132,13 +147,19 @@ export default function AdminOptionTypesPage() {
                 <div className="flex flex-wrap gap-2">
                   {type.values.length > 0 ? type.values.map(value => (
                     <span key={value.id} className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
-                      {value.display_value || value.value}
+                      {isHexColor(value.display_value) && (
+                        <span
+                          className="w-4 h-4 rounded-full border border-gray-300"
+                          style={{ backgroundColor: value.display_value! }}
+                        />
+                      )}
+                      {value.value}
                       <button onClick={() => handleDeleteValue(type.id, value.id)} className="text-red-500 hover:text-red-700">×</button>
                     </span>
                   )) : <p className="text-sm text-gray-400">No values yet.</p>}
                 </div>
 
-                <div className="grid md:grid-cols-[2fr_2fr_1fr_auto] gap-3 items-end">
+                <div className="grid md:grid-cols-[1.3fr_1fr_1.7fr_0.8fr_auto] gap-3 items-end">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
                     <input
@@ -149,13 +170,52 @@ export default function AdminOptionTypesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Display Value</label>
-                    <input
-                      type="text"
-                      value={form.display_value}
-                      onChange={e => setValueForms(prev => ({ ...prev, [type.id]: { ...form, display_value: e.target.value } }))}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Display As</label>
+                    <select
+                      value={form.displayType}
+                      onChange={e => {
+                        const displayType = e.target.value as DisplayType;
+                        setValueForms(prev => ({
+                          ...prev,
+                          [type.id]: {
+                            ...form,
+                            displayType,
+                            display_value: displayType === 'color' && !isHexColor(form.display_value) ? '#000000' : form.display_value,
+                          },
+                        }));
+                      }}
                       className="w-full border rounded-lg px-3 py-2"
-                    />
+                    >
+                      <option value="text">Text</option>
+                      <option value="color">Color</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Display Value</label>
+                    {form.displayType === 'color' ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={isHexColor(form.display_value) ? form.display_value : '#000000'}
+                          onChange={e => setValueForms(prev => ({ ...prev, [type.id]: { ...form, display_value: e.target.value } }))}
+                          className="h-[42px] w-12 border rounded-lg cursor-pointer p-1"
+                        />
+                        <input
+                          type="text"
+                          value={form.display_value}
+                          onChange={e => setValueForms(prev => ({ ...prev, [type.id]: { ...form, display_value: e.target.value } }))}
+                          placeholder="#RRGGBB"
+                          className="w-full border rounded-lg px-3 py-2"
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={form.display_value}
+                        onChange={e => setValueForms(prev => ({ ...prev, [type.id]: { ...form, display_value: e.target.value } }))}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
