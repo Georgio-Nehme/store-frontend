@@ -154,7 +154,7 @@ export function ProductPreviewPanel({
       {/* Hero image */}
       <div className="bg-gray-100 rounded-xl overflow-hidden h-52 flex items-center justify-center mb-3">
         {activeImage?.medium_url ? (
-          <img src={activeImage.medium_url} alt={name} className="w-full h-full object-contain" />
+          <img src={activeImage.medium_url} alt={name} className="w-full h-full object-cover" />
         ) : (
           <span className="text-5xl font-bold text-gray-300">{initials}</span>
         )}

@@ -133,10 +133,17 @@ export default function EditCategoryPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
             <input type="number" value={position} onChange={e => setPosition(parseInt(e.target.value) || 0)} className="w-full border rounded-lg px-3 py-2" />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
-            Active
-          </label>
+          <div>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
+              Visible in store
+            </label>
+            {!isActive && (
+              <p className="text-xs text-amber-600 mt-1">
+                Hiding this category will deactivate all products in it (and its subcategories). Re-checking this box will reactivate them.
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300">
               {loading ? 'Saving...' : 'Save Changes'}

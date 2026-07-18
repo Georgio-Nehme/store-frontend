@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { adminDeleteCategory, adminGetCategories } from '@/lib/api';
+import { adminDeleteCategory, adminGetCategories, adminUpdateCategory } from '@/lib/api';
 import { Category } from '@/lib/types';
 import TableStats from '@/components/admin/TableStats';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
@@ -58,6 +58,17 @@ export default function AdminCategoriesPage() {
       await loadCategories();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Delete failed');
+    }
+  }
+
+  async function handleToggleActive(category: Category) {
+    const nextActive = !category.is_active;
+    if (nextActive === false && !confirm(`Hide "${category.name}"? This will deactivate all products in it (and its subcategories).`)) return;
+    try {
+      await adminUpdateCategory(category.id, { is_active: nextActive });
+      await loadCategories();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to update category');
     }
   }
 
@@ -128,6 +139,9 @@ export default function AdminCategoriesPage() {
                   <td className="px-4 py-3">
                     <div className="flex gap-3">
                       <Link href={`/admin/categories/${category.id}/edit`} className="text-blue-600 hover:underline text-xs">Edit</Link>
+                      <button onClick={() => handleToggleActive(category)} className="text-amber-600 hover:underline text-xs">
+                        {category.is_active ? 'Hide' : 'Unhide'}
+                      </button>
                       <button onClick={() => handleDelete(category.id, category.name)} className="text-red-500 hover:underline text-xs">Delete</button>
                     </div>
                   </td>
