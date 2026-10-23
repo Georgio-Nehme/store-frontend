@@ -7,6 +7,7 @@ import { ProductPreviewPanel } from './ProductPreviewPanel';
 import { VariantManager } from '@/components/admin/VariantManager';
 import { OptionGroupManager } from '@/components/admin/OptionGroupManager';
 import { PriceTierEditor, PriceTierRow } from '@/components/admin/PriceTierEditor';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 import {
   adminGetCategories,
   adminGetProduct,
@@ -366,7 +367,7 @@ export default function EditProductPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <RichTextEditor value={description} onChange={setDescription} />
                 </div>
                 {!product.can_change_type ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">

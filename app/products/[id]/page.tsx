@@ -8,6 +8,7 @@ import { CartConfigurationEntry, OptionChoice, OptionGroup, Product, ProductImag
 import { useCart } from '@/lib/cart';
 import { sortedTiers, tierDiscountPercent, tierUnitPrice } from '@/lib/pricing';
 import StarRating from '@/components/StarRating';
+import RichText from '@/components/RichText';
 import ProductTags from '@/components/ProductTags';
 import ReviewsSection from '@/components/ReviewsSection';
 
@@ -311,7 +312,7 @@ export default function ProductPage() {
               </ul>
             </div>
           )}
-          {product.description && <p className="text-gray-600 whitespace-pre-line break-words">{product.description}</p>}
+          <RichText value={product.description} className="text-gray-600" />
 
           {product.product_type === 'variable' && optionTypes.length > 0 && (
             <div className="space-y-4 rounded-xl border border-gray-200 p-4 bg-gray-50">
