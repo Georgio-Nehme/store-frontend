@@ -64,6 +64,19 @@ separate manual step on your end for now — not covered here.
 - Edit only inside `store.config/` in that store's own fork (e.g.
   `store.config/branding.ts`). Add new page files there too if a store needs a
   genuinely different layout.
+- Theme options, all optional (defaults and docs live in `lib/theme.ts`):
+  - `branding.ts` › `colors` — the `brand-*` accent scale (50–900) every storefront
+    button/link/badge uses. Default is Tailwind blue.
+  - `branding.ts` › `logoUrl` (file in `public/`), `tagline` (under the shop heading).
+  - `branding.ts` › `classes` — `page` (body background), `heading` (h1 weight,
+    colour, font), `storeName` (navbar name). Tailwind class strings, scanned by
+    Tailwind, so `bg-brand-50` etc. work here.
+  - `fonts.ts` › `displayFont` — a `next/font` font with `variable: '--font-display'`,
+    used via the `font-display` class.
+- Need something the theme can't express? Add a new option to the template
+  (default in `lib/theme.ts`, read by the shared component) rather than editing the
+  shared file in the fork. Template releases must never edit `store.config/` files
+  themselves — forks own them, and that's what keeps syncs conflict-free.
 - **Never** edit shared `app/`/`components/`/`lib/` files in a store fork unless you
   intend that store to permanently diverge from the template on that file — doing so
   is what turns a future sync into a manual-resolution conflict for that store

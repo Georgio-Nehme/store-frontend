@@ -49,7 +49,7 @@ export default function ProductCard({ product, primaryImage }: Props) {
       </Link>
       <div className="p-3 sm:p-4 flex flex-col flex-1 min-w-0">
         {product.category && (
-          <span className="inline-flex w-fit mb-2 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+          <span className="inline-flex w-fit mb-2 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-medium">
             {product.category.name}
           </span>
         )}
@@ -59,7 +59,7 @@ export default function ProductCard({ product, primaryImage }: Props) {
           </div>
         )}
         <Link href={`/products/${product.id}`}>
-          <h3 className="font-semibold text-sm sm:text-base text-gray-800 hover:text-blue-600 mb-1 line-clamp-2 break-words">{product.name}</h3>
+          <h3 className="font-semibold text-sm sm:text-base text-gray-800 hover:text-brand-600 mb-1 line-clamp-2 break-words">{product.name}</h3>
         </Link>
         {product.review_count > 0 && (
           <div className="flex items-center gap-1.5 mb-1">
@@ -68,7 +68,7 @@ export default function ProductCard({ product, primaryImage }: Props) {
           </div>
         )}
         <div className="mb-1">
-          <span className="text-blue-600 font-bold text-base sm:text-lg">
+          <span className="text-brand-600 font-bold text-base sm:text-lg">
             {product.product_type === 'variable' ? `From ${formatPrice(product.price)}` : formatPrice(product.price)}
           </span>
           {isOnSale && product.product_type !== 'variable' && (
@@ -85,7 +85,7 @@ export default function ProductCard({ product, primaryImage }: Props) {
           <button
             onClick={() => addItem({ product_id: product.id, product_name: product.name, unit_price: product.price }, product.moq)}
             disabled={!product.in_stock}
-            className="mt-auto min-h-[44px] bg-blue-600 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            className="mt-auto min-h-[44px] bg-brand-600 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
           >
             {product.moq > 1 ? `Add ${product.moq} to Cart` : 'Add to Cart'}
           </button>

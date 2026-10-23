@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getProduct, getProductImages } from '@/lib/api';
 import { CartConfigurationEntry, OptionChoice, OptionGroup, Product, ProductImage, Variant } from '@/lib/types';
 import { useCart } from '@/lib/cart';
+import { theme } from '@/lib/theme';
 import { sortedTiers, tierDiscountPercent, tierUnitPrice } from '@/lib/pricing';
 import StarRating from '@/components/StarRating';
 import RichText from '@/components/RichText';
@@ -220,7 +221,7 @@ export default function ProductPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
-      <Link href="/" className="text-blue-600 hover:underline text-sm mb-4 sm:mb-6 inline-block py-1">← Back to Shop</Link>
+      <Link href="/" className="text-brand-600 hover:underline text-sm mb-4 sm:mb-6 inline-block py-1">← Back to Shop</Link>
       <div className="grid md:grid-cols-2 gap-5 md:gap-8">
         <div className="flex flex-col gap-3">
           <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square md:aspect-auto md:h-80 flex items-center justify-center">
@@ -242,7 +243,7 @@ export default function ProductPage() {
                   key={img.id}
                   onClick={() => setActiveIdx(i)}
                   className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                    i === activeIdx ? 'border-blue-500' : 'border-transparent hover:border-gray-300'
+                    i === activeIdx ? 'border-brand-500' : 'border-transparent hover:border-gray-300'
                   }`}
                 >
                   {img.small_url ? (
@@ -260,12 +261,12 @@ export default function ProductPage() {
 
         <div className="flex flex-col gap-4">
           {product.category && (
-            <span className="inline-flex w-fit px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+            <span className="inline-flex w-fit px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-medium">
               {product.category.name}
             </span>
           )}
           <ProductTags tags={product.tags} />
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 break-words">{product.name}</h1>
+          <h1 className={`text-xl sm:text-2xl ${theme.classes.heading} break-words`}>{product.name}</h1>
           {product.review_count > 0 && (
             <div className="flex items-center gap-2">
               <StarRating rating={product.avg_rating ?? 0} size="md" />
@@ -276,7 +277,7 @@ export default function ProductPage() {
           )}
           {product.sku && product.product_type !== 'variable' && <p className="text-sm text-gray-500">SKU: {product.sku}</p>}
           <div className="flex items-baseline gap-3 flex-wrap">
-            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{formatMoney(tierPct > 0 ? effectiveUnit : displayedPrice)}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-brand-600">{formatMoney(tierPct > 0 ? effectiveUnit : displayedPrice)}</p>
             {tierPct > 0 ? (
               <>
                 <p className="text-lg text-gray-400 line-through">{formatMoney(displayedPrice)}</p>
@@ -331,7 +332,7 @@ export default function ProductPage() {
                             onClick={() => setSelectedValues(prev => ({ ...prev, [type.id]: value.id }))}
                             className={`w-10 h-10 sm:w-8 sm:h-8 rounded-full border-2 transition-all ${
                               isSelected
-                                ? 'border-blue-600 scale-110 shadow-md ring-2 ring-blue-200'
+                                ? 'border-brand-600 scale-110 shadow-md ring-2 ring-brand-200'
                                 : 'border-white shadow hover:border-gray-400'
                             }`}
                             style={{ backgroundColor: value.display_value! }}
@@ -345,8 +346,8 @@ export default function ProductPage() {
                           onClick={() => setSelectedValues(prev => ({ ...prev, [type.id]: value.id }))}
                           className={`min-h-[44px] sm:min-h-0 px-4 sm:px-3 py-2 rounded-lg border text-sm transition-colors ${
                             isSelected
-                              ? 'border-blue-600 bg-blue-600 text-white'
-                              : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                              ? 'border-brand-600 bg-brand-600 text-white'
+                              : 'border-gray-300 bg-white text-gray-700 hover:border-brand-400'
                           }`}
                         >
                           {value.display_value || value.value}
@@ -378,7 +379,7 @@ export default function ProductPage() {
                           ...prev,
                           [group.id]: { ...selection, textValue: e.target.value },
                         }))}
-                        className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                         placeholder={`Enter ${group.name.toLowerCase()}`}
                       />
                     ) : (
@@ -459,7 +460,7 @@ export default function ProductPage() {
             <button
               onClick={handleAddToCart}
               disabled={addDisabled}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
+              className="w-full bg-brand-600 text-white py-3 px-6 rounded-lg hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
             >
               {added ? '✓ Added!' : 'Add to Cart'}
             </button>

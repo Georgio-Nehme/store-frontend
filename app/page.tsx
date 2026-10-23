@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { getCategories, getProductImages, getProducts } from '@/lib/api';
 import { Category, Product, ProductImage } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
+import { branding } from '@/store.config/branding';
+import { theme } from '@/lib/theme';
 
 function sortCategories(categories: Category[]) {
   return [...categories].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
@@ -47,7 +49,7 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, [selectedCategoryId]);
 
-  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'My Store';
+  const storeName = branding.storeName;
   const topLevelCategories = useMemo(
     () => sortCategories(categories.filter(category => !category.parent_id)),
     [categories],
@@ -61,7 +63,10 @@ export default function HomePage() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-5 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">{storeName} — Shop</h1>
+      <div className="mb-4 sm:mb-8">
+        <h1 className={`text-2xl sm:text-3xl ${theme.classes.heading}`}>{storeName} — Shop</h1>
+        {theme.tagline && <p className="text-gray-500 mt-1">{theme.tagline}</p>}
+      </div>
 
       <div className="mb-5 sm:mb-8 space-y-3">
         <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
@@ -71,7 +76,7 @@ export default function HomePage() {
               setActiveParentId(null);
             }}
             className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              selectedCategoryId === null ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+              selectedCategoryId === null ? 'bg-brand-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
             All
@@ -85,7 +90,7 @@ export default function HomePage() {
               }}
               className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 selectedCategoryId === category.id || activeParentId === category.id
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-brand-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >

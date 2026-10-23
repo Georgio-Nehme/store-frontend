@@ -15,6 +15,25 @@ Every release: bump the version below and in `package.json`, add an entry here, 
 `git tag vX.Y.Z` and push the tag. This triggers `notify-stores.yml`, which opens a
 sync PR on every store fork listed in `stores.json`. See `RUNBOOK.md`.
 
+## [1.3.0] - 2026-10-23
+
+### Added
+
+- Store theming from `store.config/` only: `branding.ts` can set the `brand-*`
+  accent colour scale, a navbar logo, a home tagline and class overrides for the page
+  background, headings and navbar store name; `fonts.ts` can set a display font.
+  Storefront components now use `brand-*` instead of hardcoded `blue-*` (the default
+  brand scale is Tailwind blue, so unthemed stores look the same). Forks that had
+  restyled shared files should move those choices into `store.config/` and take the
+  template's version of the shared files — see `RUNBOOK.md` › Customizing design.
+- Rich-text product descriptions (bold, italic, underline, lists, text colour) with a
+  formatting toolbar in the admin; plain-text descriptions keep their line breaks.
+  Needs the backend sanitizer from `ecom-platform` deployed first.
+- Promo codes can be limited per client ("Max Uses Per Client"). Backend migration
+  `0022` — run `alembic upgrade head` after deploying the backend.
+- Customer-facing storefront is mobile-first (sticky navbar with cart, larger tap
+  targets, 16px inputs, sticky add-to-cart / place-order bars). Admin unchanged.
+
 ## [1.2.0] - 2026-07-27
 
 ### Added

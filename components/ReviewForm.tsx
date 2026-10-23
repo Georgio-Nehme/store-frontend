@@ -27,7 +27,7 @@ export default function ReviewForm({ existingReview, onCreate, onUpdate, onDelet
   if (!isLoggedIn) {
     return (
       <p className="text-sm text-gray-500">
-        <Link href="/login" className="text-blue-600 hover:underline">Log in</Link> to leave a review.
+        <Link href="/login" className="text-brand-600 hover:underline">Log in</Link> to leave a review.
       </p>
     );
   }
@@ -39,7 +39,7 @@ export default function ReviewForm({ existingReview, onCreate, onUpdate, onDelet
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-brand-600 hover:underline"
         >
           Edit
         </button>
@@ -86,20 +86,20 @@ export default function ReviewForm({ existingReview, onCreate, onUpdate, onDelet
         value={title}
         onChange={e => setTitle(e.target.value)}
         placeholder="Title (optional)"
-        className="border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
       />
       <textarea
         value={body}
         onChange={e => setBody(e.target.value)}
         placeholder="Share your thoughts (optional)"
         rows={3}
-        className="border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
       />
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={submitting}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300"
+          className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 disabled:bg-gray-300"
         >
           {submitting ? 'Saving…' : existingReview ? 'Save Changes' : 'Submit Review'}
         </button>

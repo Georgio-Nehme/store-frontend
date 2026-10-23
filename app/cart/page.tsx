@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCart } from '@/lib/cart';
+import { theme } from '@/lib/theme';
 import { CartConfigurationEntry } from '@/lib/types';
 import { cartItemUnitPrice, cartItemLineTotal, tierDiscountPercent } from '@/lib/pricing';
 
@@ -25,14 +26,14 @@ export default function CartPage() {
     return (
       <main className="max-w-3xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-500 text-xl mb-4">Your cart is empty</p>
-        <Link href="/" className="text-blue-600 hover:underline">← Continue Shopping</Link>
+        <Link href="/" className="text-brand-600 hover:underline">← Continue Shopping</Link>
       </main>
     );
   }
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-5 sm:py-8">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Your Cart</h1>
+      <h1 className={`text-xl sm:text-2xl ${theme.classes.heading} mb-4 sm:mb-6`}>Your Cart</h1>
       <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8">
         {items.map(item => {
           const summary = configurationSummary(item.configuration);
@@ -66,13 +67,13 @@ export default function CartPage() {
                     </div>
                   )}
                   {tierPct > 0 ? (
-                    <p className="text-blue-600 font-medium mt-1">
+                    <p className="text-brand-600 font-medium mt-1">
                       <span className="text-gray-400 line-through mr-1">${basePrice.toFixed(2)}</span>
                       ${effectiveUnit.toFixed(2)} × {item.quantity}
                       <span className="ml-2 text-xs text-green-600">−{tierPct}% bulk</span>
                     </p>
                   ) : (
-                    <p className="text-blue-600 font-medium mt-1">${basePrice.toFixed(2)} × {item.quantity}</p>
+                    <p className="text-brand-600 font-medium mt-1">${basePrice.toFixed(2)} × {item.quantity}</p>
                   )}
                 </div>
               </div>
@@ -106,7 +107,7 @@ export default function CartPage() {
       </div>
       <div className="bg-white rounded-xl shadow p-4 sm:p-6 flex flex-col items-stretch sm:items-end gap-4">
         <p className="text-xl font-bold text-gray-800 text-right">Total: ${total.toFixed(2)}</p>
-        <Link href="/checkout" className="bg-blue-600 text-white py-3 px-8 rounded-lg hover:bg-blue-700 font-medium transition-colors text-center">
+        <Link href="/checkout" className="bg-brand-600 text-white py-3 px-8 rounded-lg hover:bg-brand-700 font-medium transition-colors text-center">
           Proceed to Checkout
         </Link>
       </div>

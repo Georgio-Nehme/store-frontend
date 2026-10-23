@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart';
+import { theme } from '@/lib/theme';
 import {
   createAddress,
   createOrder,
@@ -108,7 +109,7 @@ export default function CheckoutPage() {
     return (
       <main className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-700 text-lg mb-4">Please log in to checkout</p>
-        <Link href="/login" className="text-blue-600 hover:underline">Go to Login</Link>
+        <Link href="/login" className="text-brand-600 hover:underline">Go to Login</Link>
       </main>
     );
   }
@@ -125,7 +126,7 @@ export default function CheckoutPage() {
               Save your order ID — guest orders don&apos;t appear in an account history.
             </p>
           )}
-          <Link href="/" className="text-blue-600 hover:underline">Continue Shopping</Link>
+          <Link href="/" className="text-brand-600 hover:underline">Continue Shopping</Link>
         </div>
       </main>
     );
@@ -257,15 +258,15 @@ export default function CheckoutPage() {
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-5 sm:py-8">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Checkout</h1>
+      <h1 className={`text-xl sm:text-2xl ${theme.classes.heading} mb-4 sm:mb-6`}>Checkout</h1>
 
       {isGuest && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 sm:mb-6 flex items-start gap-3">
-          <span className="text-blue-500 text-lg mt-0.5">ℹ️</span>
-          <div className="text-sm text-blue-800">
+        <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 mb-4 sm:mb-6 flex items-start gap-3">
+          <span className="text-brand-500 text-lg mt-0.5">ℹ️</span>
+          <div className="text-sm text-brand-800">
             <p className="font-medium">Checking out as guest</p>
             <p className="mt-1">
-              <Link href="/login" className="underline hover:text-blue-600">Log in or create an account</Link> to track your orders and save your address.
+              <Link href="/login" className="underline hover:text-brand-600">Log in or create an account</Link> to track your orders and save your address.
             </p>
           </div>
         </div>
@@ -274,7 +275,7 @@ export default function CheckoutPage() {
       <div className="bg-white rounded-xl shadow p-4 sm:p-6 mb-4 sm:mb-6">
         <h2 className="font-semibold text-gray-700 mb-4">Order Summary</h2>
         {items.length === 0 ? (
-          <p className="text-gray-500">Your cart is empty. <Link href="/" className="text-blue-600 hover:underline">Shop now</Link></p>
+          <p className="text-gray-500">Your cart is empty. <Link href="/" className="text-brand-600 hover:underline">Shop now</Link></p>
         ) : (
           <>
             {items.map(item => {
@@ -327,7 +328,7 @@ export default function CheckoutPage() {
                 value={guestName}
                 onChange={e => setGuestName(e.target.value)}
                 required
-                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <input
                 type="tel"
@@ -335,14 +336,14 @@ export default function CheckoutPage() {
                 value={guestPhone}
                 onChange={e => setGuestPhone(e.target.value)}
                 required
-                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <input
                 type="email"
                 placeholder="Email (optional)"
                 value={guestEmail}
                 onChange={e => setGuestEmail(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           )}
@@ -361,7 +362,7 @@ export default function CheckoutPage() {
                   placeholder="Enter promo code"
                   value={promoCode}
                   onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                  className="flex-1 min-w-0 border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                  className="flex-1 min-w-0 border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 uppercase"
                 />
                 <button
                   type="button"
@@ -390,7 +391,7 @@ export default function CheckoutPage() {
                     {savedAddresses.map(saved => (
                       <label
                         key={saved.id}
-                        className={`flex gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${selectedAddressId === saved.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                        className={`flex gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${selectedAddressId === saved.id ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}
                       >
                         <input
                           type="radio"
@@ -403,14 +404,14 @@ export default function CheckoutPage() {
                         <div className="text-sm text-gray-700">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{saved.label || 'Saved address'}</span>
-                            {saved.is_default && <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Default</span>}
+                            {saved.is_default && <span className="text-xs text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Default</span>}
                           </div>
                           <p>{saved.city}, {saved.street}</p>
                           <p className="text-gray-500">{saved.district}, {saved.governorate}</p>
                         </div>
                       </label>
                     ))}
-                    <label className={`flex gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${usingNewAddress ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <label className={`flex gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${usingNewAddress ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
                       <input
                         type="radio"
                         name="shipping-address"
@@ -446,7 +447,7 @@ export default function CheckoutPage() {
                           type="text"
                           value={addressLabel}
                           onChange={e => setAddressLabel(e.target.value)}
-                          className="w-full border rounded-lg px-4 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full border rounded-lg px-4 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                           placeholder="e.g. Home or Work"
                         />
                       </div>
@@ -463,7 +464,7 @@ export default function CheckoutPage() {
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={2}
-              className="w-full border rounded-lg px-4 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border rounded-lg px-4 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Special instructions..."
             />
           </div>
@@ -471,7 +472,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={loading || (!isGuest && addressesLoading)}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors"
+              className="w-full bg-brand-600 text-white py-3 rounded-lg hover:bg-brand-700 disabled:bg-gray-300 font-medium transition-colors"
             >
               {loading ? 'Placing Order...' : `Place Order · $${finalTotal.toFixed(2)}`}
             </button>

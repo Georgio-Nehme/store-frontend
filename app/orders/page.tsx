@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { theme } from '@/lib/theme';
 import { getMyOrders, getCustomerSession } from '@/lib/api';
 import { Order } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
+  confirmed: 'bg-brand-100 text-brand-800',
   shipped: 'bg-purple-100 text-purple-800',
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
@@ -51,8 +52,8 @@ export default function MyOrdersPage() {
   return (
     <main className="max-w-3xl mx-auto px-4 py-5 sm:py-8">
       <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">My Orders</h1>
-        <Link href="/" className="text-blue-600 hover:underline text-sm">← Continue Shopping</Link>
+        <h1 className={`text-xl sm:text-2xl ${theme.classes.heading}`}>My Orders</h1>
+        <Link href="/" className="text-brand-600 hover:underline text-sm">← Continue Shopping</Link>
       </div>
 
       {error && (
@@ -62,7 +63,7 @@ export default function MyOrdersPage() {
       {!error && orders.length === 0 && (
         <div className="text-center py-16">
           <p className="text-gray-400 text-lg mb-3">You haven&apos;t placed any orders yet.</p>
-          <Link href="/" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors inline-block">
+          <Link href="/" className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 font-medium text-sm transition-colors inline-block">
             Start Shopping
           </Link>
         </div>

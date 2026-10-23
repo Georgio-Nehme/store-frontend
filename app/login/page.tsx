@@ -76,13 +76,13 @@ export default function LoginPage() {
         <div className="flex mb-6 border-b">
           <button
             onClick={() => setTab('signin')}
-            className={`flex-1 py-3 sm:py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'signin' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+            className={`flex-1 py-3 sm:py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'signin' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
           >
             Sign In
           </button>
           <button
             onClick={() => setTab('register')}
-            className={`flex-1 py-3 sm:py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'register' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+            className={`flex-1 py-3 sm:py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === 'register' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
           >
             Create Account
           </button>
@@ -92,19 +92,19 @@ export default function LoginPage() {
 
         {tab === 'signin' ? (
           <form onSubmit={handleSignIn} className="flex flex-col gap-4">
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button type="submit" disabled={loading} className="bg-blue-600 text-white py-3 sm:py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors">
+            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <button type="submit" disabled={loading} className="bg-brand-600 text-white py-3 sm:py-2 rounded-lg hover:bg-brand-700 disabled:bg-gray-300 font-medium transition-colors">
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="flex flex-col gap-4">
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="tel" placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button type="submit" disabled={loading} className="bg-blue-600 text-white py-3 sm:py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors">
+            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <input type="tel" placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <button type="submit" disabled={loading} className="bg-brand-600 text-white py-3 sm:py-2 rounded-lg hover:bg-brand-700 disabled:bg-gray-300 font-medium transition-colors">
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
