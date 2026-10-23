@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { adminCreateProduct, adminGetCategories, adminUploadImage, getStoreSettings } from '@/lib/api';
 import { Category, ProductImage, ProductType, StoreSettings } from '@/lib/types';
 import { VariantManager } from '@/components/admin/VariantManager';
+import { PriceTierEditor, PriceTierRow } from '@/components/admin/PriceTierEditor';
 
 interface UploadedImageItem {
   image: ProductImage;
@@ -49,6 +50,7 @@ export default function NewProductPage() {
   const [isBestSeller, setIsBestSeller] = useState(false);
   const [isLimitedTime, setIsLimitedTime] = useState(false);
   const [limitedTimeEndsAt, setLimitedTimeEndsAt] = useState('');
+  const [priceTiers, setPriceTiers] = useState<PriceTierRow[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -88,6 +90,9 @@ export default function NewProductPage() {
         is_best_seller: isBestSeller,
         is_limited_time: isLimitedTime,
         limited_time_ends_at: isLimitedTime && limitedTimeEndsAt ? new Date(limitedTimeEndsAt).toISOString() : null,
+        price_tiers: priceTiers
+          .filter(t => t.discount_percent !== '' && !Number.isNaN(parseFloat(t.discount_percent)))
+          .map(t => ({ min_quantity: t.min_quantity, discount_percent: t.discount_percent })),
       });
       setCreatedProductId(product.id);
       setSuccessMsg('Product created! You can now upload images below.');
@@ -177,6 +182,7 @@ export default function NewProductPage() {
             <Field label="Minimum Order Quantity">
               <input type="number" min={1} value={moq} onChange={e => setMoq(Math.max(1, parseInt(e.target.value) || 1))} className="input" />
             </Field>
+            <PriceTierEditor tiers={priceTiers} onChange={setPriceTiers} />
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="w-4 h-4" />
               <span className="text-sm font-medium text-gray-700">Active</span>

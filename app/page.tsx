@@ -60,17 +60,17 @@ export default function HomePage() {
     : [];
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">{storeName} — Shop</h1>
+    <main className="max-w-7xl mx-auto px-4 py-5 sm:py-8">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8">{storeName} — Shop</h1>
 
-      <div className="mb-8 space-y-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="mb-5 sm:mb-8 space-y-3">
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
           <button
             onClick={() => {
               setSelectedCategoryId(null);
               setActiveParentId(null);
             }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               selectedCategoryId === null ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
@@ -83,7 +83,7 @@ export default function HomePage() {
                 setSelectedCategoryId(category.id);
                 setActiveParentId(category.id);
               }}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 selectedCategoryId === category.id || activeParentId === category.id
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -95,12 +95,12 @@ export default function HomePage() {
         </div>
 
         {activeParent && activeSubcategories.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
             {activeSubcategories.map(category => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategoryId(category.id)}
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-sm transition-colors ${
                   selectedCategoryId === category.id
                     ? 'bg-gray-900 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -114,7 +114,7 @@ export default function HomePage() {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-gray-200 rounded-xl h-64 animate-pulse" />
           ))}
@@ -134,7 +134,7 @@ export default function HomePage() {
       )}
 
       {!loading && !error && products.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {products.map(product => (
             <ProductCard
               key={product.id}

@@ -49,9 +49,9 @@ export default function MyOrdersPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">My Orders</h1>
+    <main className="max-w-3xl mx-auto px-4 py-5 sm:py-8">
+      <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">My Orders</h1>
         <Link href="/" className="text-blue-600 hover:underline text-sm">← Continue Shopping</Link>
       </div>
 
@@ -70,8 +70,8 @@ export default function MyOrdersPage() {
 
       <div className="space-y-4">
         {orders.map(order => (
-          <div key={order.id} className="bg-white rounded-xl shadow p-5">
-            <div className="flex items-start justify-between mb-3">
+          <div key={order.id} className="bg-white rounded-xl shadow p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <p className="text-xs text-gray-400 mb-0.5">Order</p>
                 <p className="font-mono text-sm text-gray-700">{order.id.slice(0, 8).toUpperCase()}…</p>

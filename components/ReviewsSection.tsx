@@ -59,7 +59,7 @@ export default function ReviewsSection({ productId, title = 'Reviews' }: Props) 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
         <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
         {reviewCount > 0 && (
           <>

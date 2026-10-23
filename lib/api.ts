@@ -330,10 +330,19 @@ export function setDefaultAddress(id: string): Promise<CustomerAddress> {
   return customerApiFetch<CustomerAddress>(`/addresses/${id}/default`, { method: 'PATCH' });
 }
 
-export function validatePromoCode(code: string, orderTotal: number): Promise<PromoCodeValidateResponse> {
+export function validatePromoCode(
+  code: string,
+  orderTotal: number,
+  guest?: { phone?: string; email?: string },
+): Promise<PromoCodeValidateResponse> {
   return apiFetch<PromoCodeValidateResponse>('/promo-codes/validate', {
     method: 'POST',
-    body: JSON.stringify({ code, order_total: orderTotal }),
+    body: JSON.stringify({
+      code,
+      order_total: orderTotal,
+      guest_phone: guest?.phone || undefined,
+      guest_email: guest?.email || undefined,
+    }),
   });
 }
 
@@ -360,6 +369,7 @@ export function adminCreateProduct(data: {
   is_best_seller?: boolean;
   is_limited_time?: boolean;
   limited_time_ends_at?: string | null;
+  price_tiers?: { min_quantity: number; discount_percent: string }[];
 }): Promise<Product> {
   return apiFetch<Product>('/admin/products', {
     method: 'POST',
@@ -382,6 +392,7 @@ export function adminUpdateProduct(id: string, data: {
   is_best_seller?: boolean;
   is_limited_time?: boolean;
   limited_time_ends_at?: string | null;
+  price_tiers?: { min_quantity: number; discount_percent: string }[];
 }): Promise<Product> {
   return apiFetch<Product>(`/admin/products/${id}`, {
     method: 'PUT',
@@ -696,6 +707,7 @@ export function adminCreatePromoCode(data: {
   discount_value: string;
   min_order_amount?: string;
   max_uses?: number;
+  max_uses_per_customer?: number;
   expires_at?: string;
   is_active: boolean;
 }): Promise<PromoCode> {
@@ -709,6 +721,7 @@ export function adminUpdatePromoCode(id: string, data: {
   is_active?: boolean;
   description?: string;
   max_uses?: number | null;
+  max_uses_per_customer?: number | null;
   expires_at?: string | null;
 }): Promise<PromoCode> {
   return apiFetch<PromoCode>(`/admin/promo-codes/${id}`, {

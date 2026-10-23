@@ -24,7 +24,7 @@ export default function ReviewList({ reviews }: { reviews: Review[] }) {
             <span className="text-xs text-gray-400">{formatDate(review.created_at)}</span>
           </div>
           {review.title && <p className="font-medium text-gray-800 mt-2">{review.title}</p>}
-          {review.body && <p className="text-sm text-gray-600 mt-1">{review.body}</p>}
+          {review.body && <p className="text-sm text-gray-600 mt-1 whitespace-pre-line break-words">{review.body}</p>}
         </div>
       ))}
     </div>

@@ -18,7 +18,7 @@ export default function LebanonAddressForm({ value, onChange }: Props) {
     onChange(next);
   }
 
-  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
   const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 
   return (

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getProduct, getProductImages } from '@/lib/api';
 import { CartConfigurationEntry, OptionChoice, OptionGroup, Product, ProductImage, Variant } from '@/lib/types';
 import { useCart } from '@/lib/cart';
+import { sortedTiers, tierDiscountPercent, tierUnitPrice } from '@/lib/pricing';
 import StarRating from '@/components/StarRating';
 import ProductTags from '@/components/ProductTags';
 import ReviewsSection from '@/components/ReviewsSection';
@@ -167,6 +168,7 @@ export default function ProductPage() {
         unit_price: selectedVariant.price,
         variant_id: selectedVariant.id,
         variant_label: selectedVariant.option_values.map(value => value.value).join(' / '),
+        price_tiers: product.price_tiers,
       }, qty);
       handleAdded();
       return;
@@ -179,12 +181,13 @@ export default function ProductPage() {
         product_name: product.name,
         unit_price: liveConfigPrice,
         configuration: buildConfiguration(optionGroups),
+        price_tiers: product.price_tiers,
       }, qty);
       handleAdded();
       return;
     }
 
-    addItem({ product_id: product.id, product_name: product.name, unit_price: product.price }, qty);
+    addItem({ product_id: product.id, product_name: product.name, unit_price: product.price, price_tiers: product.price_tiers }, qty);
     handleAdded();
   }
 
@@ -204,6 +207,9 @@ export default function ProductPage() {
       ? liveConfigPrice
       : product.price;
   const displayedStock = product.product_type === 'variable' ? selectedVariant?.stock ?? 0 : product.stock;
+  const productTiers = sortedTiers(product.price_tiers);
+  const tierPct = tierDiscountPercent(product.price_tiers, qty);
+  const effectiveUnit = tierUnitPrice(parseFloat(displayedPrice), product.price_tiers, qty);
   const belowMoq = product.product_type !== 'configurable' && displayedStock > 0 && displayedStock < product.moq;
   const addDisabled = (product.product_type === 'variable'
     ? !selectedVariant || !optionTypes.every(type => selectedValues[type.id]) || selectedVariant.stock <= 0
@@ -212,11 +218,11 @@ export default function ProductPage() {
       : !product.in_stock) || belowMoq;
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      <Link href="/" className="text-blue-600 hover:underline text-sm mb-6 block">← Back to Shop</Link>
-      <div className="grid md:grid-cols-2 gap-8">
+    <main className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
+      <Link href="/" className="text-blue-600 hover:underline text-sm mb-4 sm:mb-6 inline-block py-1">← Back to Shop</Link>
+      <div className="grid md:grid-cols-2 gap-5 md:gap-8">
         <div className="flex flex-col gap-3">
-          <div className="bg-gray-100 rounded-xl overflow-hidden h-80 flex items-center justify-center">
+          <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square md:aspect-auto md:h-80 flex items-center justify-center">
             {activeImage?.medium_url ? (
               <img
                 src={activeImage.medium_url}
@@ -258,7 +264,7 @@ export default function ProductPage() {
             </span>
           )}
           <ProductTags tags={product.tags} />
-          <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 break-words">{product.name}</h1>
           {product.review_count > 0 && (
             <div className="flex items-center gap-2">
               <StarRating rating={product.avg_rating ?? 0} size="md" />
@@ -268,13 +274,44 @@ export default function ProductPage() {
             </div>
           )}
           {product.sku && product.product_type !== 'variable' && <p className="text-sm text-gray-500">SKU: {product.sku}</p>}
-          <div className="flex items-baseline gap-3">
-            <p className="text-3xl font-bold text-blue-600">{formatMoney(displayedPrice)}</p>
-            {product.compare_price && parseFloat(product.compare_price) > parseFloat(displayedPrice) && product.product_type !== 'variable' && (
-              <p className="text-lg text-gray-400 line-through">{formatMoney(product.compare_price)}</p>
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{formatMoney(tierPct > 0 ? effectiveUnit : displayedPrice)}</p>
+            {tierPct > 0 ? (
+              <>
+                <p className="text-lg text-gray-400 line-through">{formatMoney(displayedPrice)}</p>
+                <span className="text-sm font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                  −{tierPct}% at {qty}+ units
+                </span>
+              </>
+            ) : (
+              product.compare_price && parseFloat(product.compare_price) > parseFloat(displayedPrice) && product.product_type !== 'variable' && (
+                <p className="text-lg text-gray-400 line-through">{formatMoney(product.compare_price)}</p>
+              )
             )}
           </div>
-          {product.description && <p className="text-gray-600">{product.description}</p>}
+
+          {productTiers.length > 0 && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Buy more, save more</p>
+              <ul className="space-y-1">
+                {productTiers.map(tier => {
+                  const pct = parseFloat(tier.discount_percent);
+                  const each = tierUnitPrice(parseFloat(displayedPrice), [tier], tier.min_quantity);
+                  const active = qty >= tier.min_quantity && pct === tierPct;
+                  return (
+                    <li
+                      key={tier.min_quantity}
+                      className={`flex justify-between text-sm ${active ? 'text-green-700 font-medium' : 'text-gray-600'}`}
+                    >
+                      <span>Buy {tier.min_quantity}+ &middot; {pct}% off</span>
+                      <span>{formatMoney(each)} each</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+          {product.description && <p className="text-gray-600 whitespace-pre-line break-words">{product.description}</p>}
 
           {product.product_type === 'variable' && optionTypes.length > 0 && (
             <div className="space-y-4 rounded-xl border border-gray-200 p-4 bg-gray-50">
@@ -291,7 +328,7 @@ export default function ProductPage() {
                             type="button"
                             title={value.value}
                             onClick={() => setSelectedValues(prev => ({ ...prev, [type.id]: value.id }))}
-                            className={`w-8 h-8 rounded-full border-2 transition-all ${
+                            className={`w-10 h-10 sm:w-8 sm:h-8 rounded-full border-2 transition-all ${
                               isSelected
                                 ? 'border-blue-600 scale-110 shadow-md ring-2 ring-blue-200'
                                 : 'border-white shadow hover:border-gray-400'
@@ -305,7 +342,7 @@ export default function ProductPage() {
                           key={value.id}
                           type="button"
                           onClick={() => setSelectedValues(prev => ({ ...prev, [type.id]: value.id }))}
-                          className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                          className={`min-h-[44px] sm:min-h-0 px-4 sm:px-3 py-2 rounded-lg border text-sm transition-colors ${
                             isSelected
                               ? 'border-blue-600 bg-blue-600 text-white'
                               : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
@@ -340,7 +377,7 @@ export default function ProductPage() {
                           ...prev,
                           [group.id]: { ...selection, textValue: e.target.value },
                         }))}
-                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder={`Enter ${group.name.toLowerCase()}`}
                       />
                     ) : (
@@ -348,7 +385,7 @@ export default function ProductPage() {
                         {sortChoices(group.choices).map(choice => {
                           const checked = selection.selectedChoiceIds.includes(choice.id);
                           return (
-                            <label key={choice.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
+                            <label key={choice.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-3 sm:py-2 text-sm cursor-pointer">
                               <div className="flex items-center gap-3">
                                 <input
                                   type={group.input_type === 'single' ? 'radio' : 'checkbox'}
@@ -394,7 +431,7 @@ export default function ProductPage() {
           </p>
 
           {(product.product_type !== 'variable' || selectedVariant) && (product.product_type !== 'configurable' || product.in_stock) && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <label className="text-sm text-gray-600">Quantity:</label>
               <input
                 type="number"
@@ -402,7 +439,7 @@ export default function ProductPage() {
                 max={Math.max(displayedStock, product.moq)}
                 value={qty}
                 onChange={e => setQty(Math.min(Math.max(product.moq, parseInt(e.target.value) || product.moq), Math.max(displayedStock, product.moq)))}
-                className="border rounded-lg px-3 py-1 w-20 text-center"
+                className="border rounded-lg px-3 py-2 sm:py-1 w-24 sm:w-20 text-center text-base"
               />
               {product.moq > 1 && <span className="text-xs text-gray-500">Min. order: {product.moq}</span>}
             </div>
@@ -417,17 +454,19 @@ export default function ProductPage() {
             <p className="text-sm text-gray-500">Variant SKU: {selectedVariant.sku}</p>
           )}
 
-          <button
-            onClick={handleAddToCart}
-            disabled={addDisabled}
-            className="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
-          >
-            {added ? '✓ Added!' : 'Add to Cart'}
-          </button>
+          <div className="sticky bottom-0 z-30 -mx-4 px-4 py-3 bg-white/95 backdrop-blur border-t border-gray-200 md:static md:mx-0 md:p-0 md:bg-transparent md:backdrop-blur-none md:border-0">
+            <button
+              onClick={handleAddToCart}
+              disabled={addDisabled}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
+            >
+              {added ? '✓ Added!' : 'Add to Cart'}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="mt-12 border-t border-gray-200 pt-8">
+      <div className="mt-8 sm:mt-12 border-t border-gray-200 pt-6 sm:pt-8">
         <ReviewsSection productId={product.id} title="Product Reviews" />
       </div>
     </main>

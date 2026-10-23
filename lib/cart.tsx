@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { getCustomerSession, syncCart } from './api';
-import { CartConfigurationEntry, CartItem } from './types';
+import { CartConfigurationEntry, CartItem, PriceTier } from './types';
+import { cartItemLineTotal } from './pricing';
 
 interface CartAddItemInput {
   product_id: string;
@@ -11,6 +12,7 @@ interface CartAddItemInput {
   variant_id?: string | null;
   variant_label?: string | null;
   configuration?: CartConfigurationEntry[] | null;
+  price_tiers?: PriceTier[] | null;
 }
 
 interface CartContextType {
@@ -84,7 +86,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     void syncCart(items)
       .then(cart => {
-        const serverItems = cart.items ?? [];
+        // The backend cart doesn't persist price_tiers — re-attach them from the
+        // local items by key so tier-aware line totals survive the round-trip.
+        const tiersByKey = new Map(items.map(item => [cartKey(item), item.price_tiers ?? null]));
+        const serverItems = (cart.items ?? []).map(item => ({
+          ...item,
+          price_tiers: tiersByKey.get(cartKey(item)) ?? item.price_tiers ?? null,
+        }));
         const serverJson = JSON.stringify(serverItems);
         lastSyncedRef.current = serverJson;
         if (serverJson !== nextJson) {
@@ -108,6 +116,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 unit_price: item.unit_price,
                 variant_label: item.variant_label ?? null,
                 configuration: item.configuration ?? null,
+                price_tiers: item.price_tiers ?? null,
               }
             : entry,
         );
@@ -123,6 +132,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           variant_label: item.variant_label ?? null,
           unit_price: item.unit_price,
           configuration: item.configuration ?? null,
+          price_tiers: item.price_tiers ?? null,
         },
       ];
     });
@@ -153,7 +163,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   }
 
-  const total = items.reduce((sum, item) => sum + parseFloat(item.unit_price) * item.quantity, 0);
+  const total = items.reduce((sum, item) => sum + cartItemLineTotal(item), 0);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total }}>

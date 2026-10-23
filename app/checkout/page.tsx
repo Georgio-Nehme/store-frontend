@@ -15,6 +15,7 @@ import {
 import LebanonAddressForm from '@/components/LebanonAddressForm';
 import { EMPTY_LEBANON_ADDRESS, formatLebanonAddress, LebanonAddress } from '@/lib/lebanon';
 import { CartConfigurationEntry, CustomerAddress } from '@/lib/types';
+import { cartItemLineTotal } from '@/lib/pricing';
 
 const NEW_ADDRESS_VALUE = '__new__';
 
@@ -135,7 +136,11 @@ export default function CheckoutPage() {
     setPromoLoading(true);
     setPromoMsg('');
     try {
-      const res = await validatePromoCode(promoCode.trim(), total);
+      const res = await validatePromoCode(
+        promoCode.trim(),
+        total,
+        isGuest ? { phone: guestPhone.trim(), email: guestEmail.trim() } : undefined,
+      );
       setPromoValid(res.valid);
       setPromoMsg(res.message);
       setDiscountAmount(res.valid ? parseFloat(res.discount_amount) : 0);
@@ -251,11 +256,11 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Checkout</h1>
+    <main className="max-w-2xl mx-auto px-4 py-5 sm:py-8">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Checkout</h1>
 
       {isGuest && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 sm:mb-6 flex items-start gap-3">
           <span className="text-blue-500 text-lg mt-0.5">ℹ️</span>
           <div className="text-sm text-blue-800">
             <p className="font-medium">Checking out as guest</p>
@@ -266,7 +271,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
+      <div className="bg-white rounded-xl shadow p-4 sm:p-6 mb-4 sm:mb-6">
         <h2 className="font-semibold text-gray-700 mb-4">Order Summary</h2>
         {items.length === 0 ? (
           <p className="text-gray-500">Your cart is empty. <Link href="/" className="text-blue-600 hover:underline">Shop now</Link></p>
@@ -278,11 +283,11 @@ export default function CheckoutPage() {
                 .join('|')}`;
               return (
               <div key={itemKey} className="flex justify-between py-2 border-b last:border-0 gap-4">
-                <div>
-                  <span className="text-gray-700">{item.product_name || 'Product'} × {item.quantity}</span>
+                <div className="min-w-0">
+                  <span className="text-gray-700 break-words">{item.product_name || 'Product'} × {item.quantity}</span>
                   {item.variant_label && <p className="text-xs text-gray-500 mt-1">{item.variant_label}</p>}
                 </div>
-                <span className="font-medium">${(parseFloat(item.unit_price) * item.quantity).toFixed(2)}</span>
+                <span className="font-medium shrink-0">${cartItemLineTotal(item).toFixed(2)}</span>
               </div>
               );
             })}
@@ -309,7 +314,7 @@ export default function CheckoutPage() {
       </div>
 
       {items.length > 0 && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-4 sm:p-6 flex flex-col gap-4">
           {error && <p className="text-red-600 text-sm p-3 bg-red-50 rounded-lg">{error}</p>}
 
           {/* Guest contact info */}
@@ -322,7 +327,7 @@ export default function CheckoutPage() {
                 value={guestName}
                 onChange={e => setGuestName(e.target.value)}
                 required
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="tel"
@@ -330,14 +335,14 @@ export default function CheckoutPage() {
                 value={guestPhone}
                 onChange={e => setGuestPhone(e.target.value)}
                 required
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="email"
                 placeholder="Email (optional)"
                 value={guestEmail}
                 onChange={e => setGuestEmail(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           )}
@@ -347,7 +352,7 @@ export default function CheckoutPage() {
             {promoValid ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <span className="text-green-700 text-sm font-medium flex-1">{promoMsg}</span>
-                <button type="button" onClick={removePromoCode} className="text-xs text-red-500 hover:underline">Remove</button>
+                <button type="button" onClick={removePromoCode} className="text-sm sm:text-xs text-red-500 hover:underline py-1">Remove</button>
               </div>
             ) : (
               <div className="flex gap-2">
@@ -356,13 +361,13 @@ export default function CheckoutPage() {
                   placeholder="Enter promo code"
                   value={promoCode}
                   onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                  className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                  className="flex-1 min-w-0 border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                 />
                 <button
                   type="button"
                   onClick={applyPromoCode}
                   disabled={promoLoading || !promoCode.trim()}
-                  className="px-4 py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-800 disabled:bg-gray-300 transition-colors"
+                  className="shrink-0 px-4 py-2.5 sm:py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-800 disabled:bg-gray-300 transition-colors"
                 >
                   {promoLoading ? '...' : 'Apply'}
                 </button>
@@ -441,7 +446,7 @@ export default function CheckoutPage() {
                           type="text"
                           value={addressLabel}
                           onChange={e => setAddressLabel(e.target.value)}
-                          className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full border rounded-lg px-4 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="e.g. Home or Work"
                         />
                       </div>
@@ -458,17 +463,19 @@ export default function CheckoutPage() {
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={2}
-              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border rounded-lg px-4 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Special instructions..."
             />
           </div>
-          <button
-            type="submit"
-            disabled={loading || (!isGuest && addressesLoading)}
-            className="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors"
-          >
-            {loading ? 'Placing Order...' : `Place Order · $${finalTotal.toFixed(2)}`}
-          </button>
+          <div className="sticky bottom-0 z-30 -mx-4 -mb-4 px-4 py-3 bg-white/95 backdrop-blur border-t border-gray-200 rounded-b-xl sm:static sm:m-0 sm:p-0 sm:bg-transparent sm:backdrop-blur-none sm:border-0">
+            <button
+              type="submit"
+              disabled={loading || (!isGuest && addressesLoading)}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 font-medium transition-colors"
+            >
+              {loading ? 'Placing Order...' : `Place Order · $${finalTotal.toFixed(2)}`}
+            </button>
+          </div>
         </form>
       )}
     </main>

@@ -75,7 +75,7 @@ export default function ReviewForm({ existingReview, onCreate, onUpdate, onDelet
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 max-w-md">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
       {error && <p className="text-red-600 text-sm p-2 bg-red-50 rounded-lg">{error}</p>}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Your rating</label>
@@ -86,14 +86,14 @@ export default function ReviewForm({ existingReview, onCreate, onUpdate, onDelet
         value={title}
         onChange={e => setTitle(e.target.value)}
         placeholder="Title (optional)"
-        className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <textarea
         value={body}
         onChange={e => setBody(e.target.value)}
         placeholder="Share your thoughts (optional)"
         rows={3}
-        className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <div className="flex gap-2">
         <button

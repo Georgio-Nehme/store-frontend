@@ -110,6 +110,12 @@ export interface CategoryBrief {
 
 export type ProductTag = 'best_seller' | 'low_stock' | 'limited_time';
 
+// Quantity-break pricing: buy >= min_quantity, every unit gets discount_percent off.
+export interface PriceTier {
+  min_quantity: number;
+  discount_percent: string;
+}
+
 export interface Product {
   id: string;
   store_id: string;
@@ -136,6 +142,7 @@ export interface Product {
   option_types: OptionType[] | null;
   variants: Variant[] | null;
   option_groups: OptionGroup[] | null;
+  price_tiers: PriceTier[];
   created_at: string;
   updated_at: string | null;
 }
@@ -233,6 +240,9 @@ export interface CartItem {
   variant_label: string | null;
   unit_price: string;
   configuration: CartConfigurationEntry[] | null;
+  // Quantity-break tiers, kept client-side so the cart can show discounted line
+  // totals; the backend recomputes authoritatively at order time.
+  price_tiers?: PriceTier[] | null;
 }
 
 export interface Cart {
@@ -357,6 +367,7 @@ export interface PromoCode {
   discount_value: string;
   min_order_amount: string | null;
   max_uses: number | null;
+  max_uses_per_customer: number | null;
   uses_count: number;
   expires_at: string | null;
   is_active: boolean;

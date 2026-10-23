@@ -19,6 +19,7 @@ const emptyForm = {
   discount_value: '',
   min_order_amount: '',
   max_uses: '',
+  max_uses_per_customer: '',
   expires_at: '',
   is_active: true,
 };
@@ -58,6 +59,7 @@ export default function AdminPromoCodesPage() {
         discount_value: form.discount_value,
         min_order_amount: form.min_order_amount || undefined,
         max_uses: form.max_uses ? parseInt(form.max_uses) : undefined,
+        max_uses_per_customer: form.max_uses_per_customer ? parseInt(form.max_uses_per_customer) : undefined,
         expires_at: form.expires_at || undefined,
         is_active: form.is_active,
       });
@@ -128,6 +130,7 @@ export default function AdminPromoCodesPage() {
               { label: 'Min Order', value: c => c.min_order_amount ? parseFloat(c.min_order_amount).toFixed(2) : '' },
               { label: 'Uses', value: c => c.uses_count },
               { label: 'Max Uses', value: c => c.max_uses ?? '' },
+              { label: 'Max Uses Per Client', value: c => c.max_uses_per_customer ?? '' },
               { label: 'Expires', value: c => c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '' },
               { label: 'Status', value: c => c.is_active ? 'active' : 'inactive' },
             ]}
@@ -209,6 +212,17 @@ export default function AdminPromoCodesPage() {
                 min="1"
                 value={form.max_uses}
                 onChange={e => setForm({ ...form, max_uses: e.target.value })}
+                placeholder="Unlimited"
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Uses Per Client</label>
+              <input
+                type="number"
+                min="1"
+                value={form.max_uses_per_customer}
+                onChange={e => setForm({ ...form, max_uses_per_customer: e.target.value })}
                 placeholder="Unlimited"
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -300,6 +314,9 @@ export default function AdminPromoCodesPage() {
                   <td className="px-4 py-3 text-gray-600">
                     {code.uses_count}
                     {code.max_uses !== null ? ` / ${code.max_uses}` : ' / ∞'}
+                    {code.max_uses_per_customer !== null && (
+                      <p className="text-gray-400 text-xs mt-0.5">{code.max_uses_per_customer} per client</p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-500">
                     {code.expires_at ? new Date(code.expires_at).toLocaleDateString() : '—'}

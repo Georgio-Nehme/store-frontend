@@ -15,6 +15,22 @@ Every release: bump the version below and in `package.json`, add an entry here, 
 `git tag vX.Y.Z` and push the tag. This triggers `notify-stores.yml`, which opens a
 sync PR on every store fork listed in `stores.json`. See `RUNBOOK.md`.
 
+## [1.2.0] - 2026-07-27
+
+### Added
+
+- Quantity-break pricing per product: store admins define any number of tiers
+  (buy N+ units → % off) on the product form. When a cart line reaches a tier's
+  quantity, every unit in that line gets that tier's discount (highest qualifying
+  tier wins). The storefront product page shows a "Buy more, save more" table and
+  the quantity-adjusted price; the cart/checkout reflect the discounted line
+  totals; and the backend recomputes the discount authoritatively at order time.
+
+  Backend: new `product_price_tiers` table (migration `0021`), so this release
+  touches the backend — run `alembic upgrade head` after deploying the new image
+  (see `RUNBOOK.md` › Backend changes; note the `create_all` collision applies
+  since `0021` adds a new table).
+
 ## [1.1.0] - 2026-07-15
 
 ### Added

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCart } from '@/lib/cart';
 import { CartConfigurationEntry } from '@/lib/types';
+import { cartItemUnitPrice, cartItemLineTotal, tierDiscountPercent } from '@/lib/pricing';
 
 function configurationSummary(configuration: CartConfigurationEntry[] | null) {
   if (!configuration) return [];
@@ -30,9 +31,9 @@ export default function CartPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Your Cart</h1>
-      <div className="flex flex-col gap-4 mb-8">
+    <main className="max-w-3xl mx-auto px-4 py-5 sm:py-8">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Your Cart</h1>
+      <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8">
         {items.map(item => {
           const summary = configurationSummary(item.configuration);
           const itemKey = `${item.product_id}:${item.variant_id ?? 'base'}:${(item.configuration ?? [])
@@ -44,6 +45,9 @@ export default function CartPage() {
             .map(word => word[0])
             .join('')
             .toUpperCase();
+          const basePrice = parseFloat(item.unit_price);
+          const effectiveUnit = cartItemUnitPrice(item);
+          const tierPct = tierDiscountPercent(item.price_tiers, item.quantity);
 
           return (
             <div key={itemKey} className="bg-white rounded-xl shadow p-4 flex flex-col sm:flex-row sm:items-center gap-4">
@@ -52,7 +56,7 @@ export default function CartPage() {
                   <span className="font-bold text-gray-400">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800">{item.product_name || 'Product'}</p>
+                  <p className="font-semibold text-gray-800 break-words">{item.product_name || 'Product'}</p>
                   {item.variant_label && <p className="text-xs text-gray-500 mt-1">Variant: {item.variant_label}</p>}
                   {summary.length > 0 && (
                     <div className="mt-1 space-y-1">
@@ -61,29 +65,37 @@ export default function CartPage() {
                       ))}
                     </div>
                   )}
-                  <p className="text-blue-600 font-medium mt-1">${parseFloat(item.unit_price).toFixed(2)} × {item.quantity}</p>
+                  {tierPct > 0 ? (
+                    <p className="text-blue-600 font-medium mt-1">
+                      <span className="text-gray-400 line-through mr-1">${basePrice.toFixed(2)}</span>
+                      ${effectiveUnit.toFixed(2)} × {item.quantity}
+                      <span className="ml-2 text-xs text-green-600">−{tierPct}% bulk</span>
+                    </p>
+                  ) : (
+                    <p className="text-blue-600 font-medium mt-1">${basePrice.toFixed(2)} × {item.quantity}</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center justify-between gap-4 sm:justify-end">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => updateQuantity(item.product_id, item.quantity - 1, item.variant_id, item.configuration)}
-                    className="w-7 h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
+                    className="w-10 h-10 sm:w-7 sm:h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
                   >
                     −
                   </button>
                   <span className="w-8 text-center">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item.product_id, item.quantity + 1, item.variant_id, item.configuration)}
-                    className="w-7 h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
+                    className="w-10 h-10 sm:w-7 sm:h-7 rounded border hover:bg-gray-100 flex items-center justify-center text-lg"
                   >
                     +
                   </button>
                 </div>
-                <p className="w-20 text-right font-semibold">${(parseFloat(item.unit_price) * item.quantity).toFixed(2)}</p>
+                <p className="w-20 text-right font-semibold">${cartItemLineTotal(item).toFixed(2)}</p>
                 <button
                   onClick={() => removeItem(item.product_id, item.variant_id, item.configuration)}
-                  className="text-red-500 hover:text-red-700 text-sm"
+                  className="text-red-500 hover:text-red-700 text-sm py-2"
                 >
                   Remove
                 </button>
@@ -92,9 +104,9 @@ export default function CartPage() {
           );
         })}
       </div>
-      <div className="bg-white rounded-xl shadow p-6 flex flex-col items-end gap-4">
-        <p className="text-xl font-bold text-gray-800">Total: ${total.toFixed(2)}</p>
-        <Link href="/checkout" className="bg-blue-600 text-white py-3 px-8 rounded-lg hover:bg-blue-700 font-medium transition-colors">
+      <div className="bg-white rounded-xl shadow p-4 sm:p-6 flex flex-col items-stretch sm:items-end gap-4">
+        <p className="text-xl font-bold text-gray-800 text-right">Total: ${total.toFixed(2)}</p>
+        <Link href="/checkout" className="bg-blue-600 text-white py-3 px-8 rounded-lg hover:bg-blue-700 font-medium transition-colors text-center">
           Proceed to Checkout
         </Link>
       </div>

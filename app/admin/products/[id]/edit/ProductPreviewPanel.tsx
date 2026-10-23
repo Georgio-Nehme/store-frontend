@@ -208,7 +208,7 @@ export function ProductPreviewPanel({
 
         {/* Description */}
         {description && (
-          <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
+          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-words">{description}</p>
         )}
 
         {/* Variable: option type pickers */}

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ProductPreviewPanel } from './ProductPreviewPanel';
 import { VariantManager } from '@/components/admin/VariantManager';
 import { OptionGroupManager } from '@/components/admin/OptionGroupManager';
+import { PriceTierEditor, PriceTierRow } from '@/components/admin/PriceTierEditor';
 import {
   adminGetCategories,
   adminGetProduct,
@@ -231,6 +232,7 @@ export default function EditProductPage() {
   const [isBestSeller, setIsBestSeller] = useState(false);
   const [isLimitedTime, setIsLimitedTime] = useState(false);
   const [limitedTimeEndsAt, setLimitedTimeEndsAt] = useState('');
+  const [priceTiers, setPriceTiers] = useState<PriceTierRow[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -262,6 +264,12 @@ export default function EditProductPage() {
       setIsBestSeller(nextProduct.is_best_seller);
       setIsLimitedTime(nextProduct.is_limited_time);
       setLimitedTimeEndsAt(toDatetimeLocal(nextProduct.limited_time_ends_at));
+      setPriceTiers(
+        (nextProduct.price_tiers ?? []).map(t => ({
+          min_quantity: t.min_quantity,
+          discount_percent: t.discount_percent,
+        })),
+      );
     }
   }
 
@@ -293,6 +301,9 @@ export default function EditProductPage() {
         is_best_seller: isBestSeller,
         is_limited_time: isLimitedTime,
         limited_time_ends_at: isLimitedTime && limitedTimeEndsAt ? new Date(limitedTimeEndsAt).toISOString() : null,
+        price_tiers: priceTiers
+          .filter(t => t.discount_percent !== '' && !Number.isNaN(parseFloat(t.discount_percent)))
+          .map(t => ({ min_quantity: t.min_quantity, discount_percent: t.discount_percent })),
       });
       setProduct(updated);
       setSaved(true);
@@ -420,6 +431,7 @@ export default function EditProductPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Order Quantity</label>
                   <input type="number" min={1} value={moq} onChange={e => setMoq(Math.max(1, parseInt(e.target.value) || 1))} className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+                <PriceTierEditor tiers={priceTiers} onChange={setPriceTiers} />
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="w-4 h-4" />
                   <span className="text-sm font-medium text-gray-700">Active</span>
