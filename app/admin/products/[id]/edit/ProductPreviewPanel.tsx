@@ -3,6 +3,7 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { Category, OptionGroup, OptionType, Product, ProductImage, ProductTag, ProductType, StoreSettings, Variant } from '@/lib/types';
 import ProductTags from '@/components/ProductTags';
+import RichText from '@/components/RichText';
 
 function isHexColor(val: string | null | undefined): boolean {
   return !!val && /^#[0-9A-Fa-f]{3,8}$/.test(val.trim());
@@ -208,7 +209,7 @@ export function ProductPreviewPanel({
 
         {/* Description */}
         {description && (
-          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-words">{description}</p>
+          <RichText value={description} className="text-sm text-gray-600 leading-relaxed" />
         )}
 
         {/* Variable: option type pickers */}

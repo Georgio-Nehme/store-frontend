@@ -7,6 +7,7 @@ import { adminCreateProduct, adminGetCategories, adminUploadImage, getStoreSetti
 import { Category, ProductImage, ProductType, StoreSettings } from '@/lib/types';
 import { VariantManager } from '@/components/admin/VariantManager';
 import { PriceTierEditor, PriceTierRow } from '@/components/admin/PriceTierEditor';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 
 interface UploadedImageItem {
   image: ProductImage;
@@ -139,7 +140,7 @@ export default function NewProductPage() {
               <input type="text" value={name} onChange={e => setName(e.target.value)} required className="input" />
             </Field>
             <Field label="Description">
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="input" />
+              <RichTextEditor value={description} onChange={setDescription} />
             </Field>
             <Field label="Product Type *">
               <select value={productType} onChange={e => setProductType(e.target.value as ProductType)} className="input">
