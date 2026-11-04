@@ -15,6 +15,7 @@ const baseLinks = [
   { href: '/admin/customers', label: 'Customers' },
   { href: '/admin/promo-codes', label: 'Promo Codes' },
   { href: '/admin/reviews', label: 'Reviews' },
+  { href: '/admin/ai-assistant', label: 'AI Assistant' },
   { href: '/admin/settings', label: 'Settings' },
   { href: '/admin/account/password', label: 'Change Password' },
 ];

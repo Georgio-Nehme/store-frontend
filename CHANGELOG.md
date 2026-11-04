@@ -15,6 +15,17 @@ Every release: bump the version below and in `package.json`, add an entry here, 
 `git tag vX.Y.Z` and push the tag. This triggers `notify-stores.yml`, which opens a
 sync PR on every store fork listed in `stores.json`. See `RUNBOOK.md`.
 
+## [Unreleased]
+
+### Added
+
+- Admin › AI Assistant: let ChatGPT, Claude and other AI tools manage the store over MCP.
+  The owner turns it on, sets a maximum of No access / View / Edit per admin section, and
+  creates credentials (server address + Client ID + Client Secret) to paste into the AI tool,
+  with step-by-step instructions per tool. Credentials can be edited or deleted anytime.
+  Needs the `ecom-platform` MCP backend (branch `store-mcp`, migration `0023`) deployed first —
+  until then the page shows an error.
+
 ## [1.3.0] - 2026-10-23
 
 ### Added

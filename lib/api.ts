@@ -20,6 +20,9 @@ import {
   ProductImage,
   ProductType,
   PromoCode,
+  AiAssistant,
+  AiConnection,
+  AiCredentialCreated,
   PromoCodeValidateResponse,
   Refund,
   Review,
@@ -696,6 +699,27 @@ export async function adminResendSenderVerification(): Promise<StoreSettings> {
 }
 
 // Admin promo code CRUD
+// Admin AI assistant (MCP access for ChatGPT / Claude / other AI tools)
+export function adminGetAiAssistant(): Promise<AiAssistant> {
+  return apiFetch<AiAssistant>('/admin/ai-assistant');
+}
+
+export function adminUpdateAiAssistant(data: { enabled?: boolean; allowed_scopes?: string[] }): Promise<AiAssistant> {
+  return apiFetch<AiAssistant>('/admin/ai-assistant', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export function adminCreateAiCredential(data: { name: string; scopes: string[] }): Promise<AiCredentialCreated> {
+  return apiFetch<AiCredentialCreated>('/admin/ai-assistant/credentials', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export function adminUpdateAiConnection(id: string, scopes: string[]): Promise<AiConnection> {
+  return apiFetch<AiConnection>(`/admin/ai-assistant/connections/${id}`, { method: 'PATCH', body: JSON.stringify({ scopes }) });
+}
+
+export function adminRevokeAiConnection(id: string): Promise<void> {
+  return apiFetch<void>(`/admin/ai-assistant/connections/${id}`, { method: 'DELETE' });
+}
+
 export function adminGetPromoCodes(): Promise<PromoCode[]> {
   return apiFetch<PromoCode[]>('/admin/promo-codes');
 }

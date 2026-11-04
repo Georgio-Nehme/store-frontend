@@ -396,3 +396,43 @@ export interface ProductImage {
   created_at: string;
   updated_at: string | null;
 }
+
+export interface AiConnection {
+  id: string;
+  kind: 'credential' | 'app';
+  name: string;
+  client_id: string | null;
+  scopes: string[];
+  approved_by: string | null;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface AiSection {
+  key: string;
+  label: string;
+  read: string;
+  write: string | null;
+}
+
+export interface AiAssistant {
+  enabled: boolean;
+  allowed_scopes: string[];
+  sections: AiSection[];
+  store_id: string;
+  store_name: string;
+  server_url: string;
+  store_url: string;
+  oauth: {
+    authorization_url: string;
+    token_url: string;
+    metadata_url: string;
+  };
+  connections: AiConnection[];
+}
+
+export interface AiCredentialCreated {
+  client_id: string;
+  client_secret: string;
+  connection: AiConnection;
+}
