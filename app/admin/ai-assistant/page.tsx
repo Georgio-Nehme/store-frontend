@@ -157,6 +157,31 @@ function SectionAccess({
 const ALL_SCOPES = (sections: AiSection[]) =>
   sections.flatMap(s => (s.write ? [`${s.key}:read`, `${s.key}:write`] : [`${s.key}:read`]));
 
+/** One-click presets: everything `allowed` permits, view-only of it, or nothing. */
+function Presets({ allowed, onPick, disabled }: { allowed: string[]; onPick: (scopes: string[]) => void; disabled?: boolean }) {
+  const presets: [string, string[]][] = [
+    ['Everything', allowed],
+    ['View only', allowed.filter(s => s.endsWith(':read'))],
+    ['Nothing', []],
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-2 mb-3">
+      <span className="text-xs text-gray-500">Quick set:</span>
+      {presets.map(([label, scopes]) => (
+        <button
+          key={label}
+          type="button"
+          disabled={disabled}
+          onClick={() => onPick(scopes)}
+          className="text-xs font-medium px-3 py-1 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function AiAssistantPage() {
   const [data, setData] = useState<AiAssistant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -284,6 +309,7 @@ export default function AiAssistantPage() {
               <p className="text-xs text-gray-500 mt-0.5 mb-3">
                 No credential can go above this. Lowering a section applies immediately to everything connected.
               </p>
+              <Presets allowed={ALL_SCOPES(data.sections)} disabled={saving} onPick={scopes => saveStore({ allowed_scopes: scopes })} />
               <SectionAccess
                 sections={data.sections}
                 allowed={ALL_SCOPES(data.sections)}
@@ -330,7 +356,10 @@ export default function AiAssistantPage() {
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <SectionAccess sections={data.sections} allowed={data.allowed_scopes} scopes={credScopes} onChange={setCredScopes} />
+              <div>
+                <Presets allowed={data.allowed_scopes} onPick={setCredScopes} />
+                <SectionAccess sections={data.sections} allowed={data.allowed_scopes} scopes={credScopes} onChange={setCredScopes} />
+              </div>
               <button
                 type="submit"
                 disabled={creating || !credName.trim() || credScopes.length === 0}
